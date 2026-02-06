@@ -12,7 +12,6 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/full_base_telephony.mk)
 # Inherit some common Omni stuff.
 $(call inherit-product, vendor/recovery/config/common.mk)
 
-
 # Inherit from ussi_arm64 device
 $(call inherit-product, device/realme/ussi_arm64/device.mk)
 
