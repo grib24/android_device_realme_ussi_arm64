@@ -10,6 +10,8 @@ DEVICE_PATH := device/realme/ussi_arm64
 # For building with OrangeFox
 ALLOW_MISSING_DEPENDENCIES := true
 FOX_VERSION := 12.1
+FOX_VENDOR_BOOT_RECOVERY := 1
+FOX_RECOVERY_VENDOR_BOOT_PARTITION := /dev/block/by-name/vendor_boot
 LC_ALL := C
 TARGET_DEVICE_ALT := ussi, ussi_arm64, RMX3930
 
