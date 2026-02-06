@@ -22,7 +22,7 @@ PRODUCT_PACKAGES += \
     android.hardware.boot@1.2-service.recovery
 
 PRODUCT_PACKAGES += \
-    bootctrl.ussi \
+    bootctrl \
     libgptutils \
     libz \
     libcutils
