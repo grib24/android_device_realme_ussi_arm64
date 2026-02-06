@@ -6,9 +6,9 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/twrp_ussi_arm64.mk
+    $(LOCAL_DIR)/ orange_ussi_arm64.mk
 
 COMMON_LUNCH_CHOICES := \
-    twrp_ussi_arm64-user \
-    twrp_ussi_arm64-userdebug \
-    twrp_ussi_arm64-eng
+    orange _ussi_arm64-user \
+    orange _ussi_arm64-userdebug \
+    orange _ussi_arm64-eng
