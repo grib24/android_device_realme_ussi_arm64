@@ -6,7 +6,7 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/ orange_ussi_arm64.mk
+    $(LOCAL_DIR)/orange_ussi_arm64.mk
 
 COMMON_LUNCH_CHOICES := \
     orange _ussi_arm64-user \
