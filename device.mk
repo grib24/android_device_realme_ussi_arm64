@@ -17,9 +17,8 @@ AB_OTA_POSTINSTALL_CONFIG += \
 # Boot control HAL (Исправлено для Android 12.1)
 PRODUCT_PACKAGES += \
     android.hardware.boot@1.2-impl \
-    android.hardware.boot@1.2-impl-recovery \
     android.hardware.boot@1.2-service \
-    android.hardware.boot@1.2-service.recovery
+   
 
 PRODUCT_PACKAGES += \
     bootctrl \
