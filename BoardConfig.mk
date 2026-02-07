@@ -48,7 +48,7 @@ BOARD_INCLUDE_RECOVERY_DTBO := false
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 
 # Kernel - prebuilt
-TARGET_PREBUILT_DTB := device/realme/ussi_arm64/prebuilt/dtb.img
+TARGET_PREBUILT_DTB := device/realme/ussi_arm64/Prebuilt/dtb.img
 
 
 # Partitions - Увеличенные размеры для OrangeFox
