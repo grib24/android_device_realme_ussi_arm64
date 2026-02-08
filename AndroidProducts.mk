@@ -1,14 +1,10 @@
 #
 # Copyright (C) 2026 The Android Open Source Project
-# Copyright (C) 2026 SebaUbuntu's TWRP device tree generator
-#
-# SPDX-License-Identifier: Apache-2.0
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/twrp_ussi_arm64.mk
+    $(LOCAL_DIR)/twrp_RMX3930.mk
 
 COMMON_LUNCH_CHOICES := \
-    twrp_ussi_arm64-user \
-    twrp_ussi_arm64-userdebug \
-    twrp_ussi_arm64-eng
+    twrp_RMX3930-eng
+

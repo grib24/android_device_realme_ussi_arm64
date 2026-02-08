@@ -1,1 +1,1 @@
-add_lunch_combo twrp_ussi_arm64-eng
+add_lunch_combo twrp_RMX3930-eng
