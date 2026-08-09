@@ -1,0 +1,6 @@
+# Display and Graphics for TWRP
+ro.surface_flinger.game_default_frame_rate_override=60
+ro.demo.hdmirotation=0
+
+# ADB and Shell settings inside Recovery
+persist.sys.usb.config=mtp,adb

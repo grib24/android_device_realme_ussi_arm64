@@ -1,0 +1,24 @@
+// Clean and Optimized Android.bp for Realme C61 (latte) Minimal TWRP
+
+// Core Unisoc Boot Scripts
+sh_binary {
+    name: "create_splloader_dual_slot_byname_path.sh",
+    src: "bin/create_splloader_dual_slot_byname_path.sh",
+    vendor: true,
+}
+
+// Hardware Init Configuration
+prebuilt_etc {
+    name: "init.ums9230_latte.rc",
+    src: "etc/init.ums9230_latte.rc",
+    sub_dir: "init/hw",
+    vendor: true,
+}
+
+prebuilt_etc {
+    name: "init.ums9230_latte.usb.rc",
+    src: "etc/init.ums9230_latte.usb.rc",
+    sub_dir: "init/hw",
+    vendor: true,
+}
+

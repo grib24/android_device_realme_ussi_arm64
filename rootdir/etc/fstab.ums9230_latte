@@ -1,0 +1,16 @@
+# <src>                                              <mnt_point>  <type>  <mnt_flags and options>                 <fs_mgr_flags>
+system                                               /system      erofs    ro                                      slotselect,logical,first_stage_mount
+vendor                                               /vendor      erofs    ro                                      slotselect,logical,first_stage_mount
+product                                              /product     erofs    ro                                      slotselect,logical,first_stage_mount
+system_ext                                           /system_ext  erofs    ro                                      slotselect,logical,first_stage_mount
+odm                                                  /odm         erofs    ro                                      slotselect,logical,first_stage_mount
+vendor_dlkm                                          /vendor_dlkm erofs    ro                                      slotselect,logical,first_stage_mount
+system_dlkm                                          /system_dlkm erofs    ro                                      slotselect,logical,first_stage_mount
+
+# Metadata & Data
+/dev/block/by-name/metadata                          /metadata    f2fs    nodev,noatime,nosuid                    wait,formattable,first_stage_mount,check
+/dev/block/by-name/userdata                          /data        f2fs    noatime,nosuid,nodev,discard,reserve_root=32768,resgid=1065,inline_xattr,inline_data,inlinecrypt,fsync_mode=nobarrier,atgc     latemount,wait,quota,check,fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized,keydirectory=/metadata/vold/metadata_encryption,reservedsize=128M,checkpoint=fs,formattable
+
+# Partitions
+/dev/block/by-name/cache                             /cache       f2fs    noatime,nosuid,nodev,discard            wait,check,formattable
+/dev/block/by-name/misc                              /misc        emmc    defaults                                defaults
