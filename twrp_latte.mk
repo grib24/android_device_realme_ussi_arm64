@@ -1,16 +1,6 @@
 # SPDX-FileCopyrightText: The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 
-# Inherit from those products. Most specific first.
-# Try multiple possible paths for core_64bit.mk
-CORE_64BIT_PATH := $(wildcard build/make/target/product/core_64bit.mk)
-ifneq ($(CORE_64BIT_PATH),)
-$(call inherit-product, build/make/target/product/core_64bit.mk)
-else
-$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64bit.mk)
-endif
-$(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
-
 # Inherit from TWRP product core configuration
 $(call inherit-product, vendor/twrp/config/common.mk)
 
