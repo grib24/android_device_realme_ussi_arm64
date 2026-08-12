@@ -1,11 +1,26 @@
 # <src>                                              <mnt_point>  <type>  <mnt_flags and options>                 <fs_mgr_flags>
-system                                               /system      erofs    ro                                      slotselect,logical,first_stage_mount
-vendor                                               /vendor      erofs    ro                                      slotselect,logical,first_stage_mount
-product                                              /product     erofs    ro                                      slotselect,logical,first_stage_mount
-system_ext                                           /system_ext  erofs    ro                                      slotselect,logical,first_stage_mount
-odm                                                  /odm         erofs    ro                                      slotselect,logical,first_stage_mount
-vendor_dlkm                                          /vendor_dlkm erofs    ro                                      slotselect,logical,first_stage_mount
-system_dlkm                                          /system_dlkm erofs    ro                                      slotselect,logical,first_stage_mount
+
+# System partitions (ext4 first, erofs as fallback)
+system                                               /system      ext4    ro,barrier=1,discard                    wait,slotselect,logical,first_stage_mount
+system                                               /system      erofs   ro                                      slotselect,logical,first_stage_mount
+
+vendor                                               /vendor      ext4    ro,barrier=1,discard                    wait,slotselect,logical,first_stage_mount
+vendor                                               /vendor      erofs   ro                                      slotselect,logical,first_stage_mount
+
+product                                              /product     ext4    ro,barrier=1,discard                    wait,slotselect,logical,first_stage_mount
+product                                              /product     erofs   ro                                      slotselect,logical,first_stage_mount
+
+system_ext                                           /system_ext  ext4    ro,barrier=1,discard                    wait,slotselect,logical,first_stage_mount
+system_ext                                           /system_ext  erofs   ro                                      slotselect,logical,first_stage_mount
+
+odm                                                  /odm         ext4    ro,barrier=1,discard                    wait,slotselect,logical,first_stage_mount
+odm                                                  /odm         erofs   ro                                      slotselect,logical,first_stage_mount
+
+vendor_dlkm                                          /vendor_dlkm ext4    ro,barrier=1,discard                    wait,slotselect,logical,first_stage_mount
+vendor_dlkm                                          /vendor_dlkm erofs   ro                                      slotselect,logical,first_stage_mount
+
+system_dlkm                                          /system_dlkm ext4    ro,barrier=1,discard                    wait,slotselect,logical,first_stage_mount
+system_dlkm                                          /system_dlkm erofs   ro                                      slotselect,logical,first_stage_mount
 
 # Metadata & Data
 /dev/block/by-name/metadata                          /metadata    f2fs    nodev,noatime,nosuid                    wait,formattable,first_stage_mount,check
@@ -13,4 +28,4 @@ system_dlkm                                          /system_dlkm erofs    ro   
 
 # Partitions
 /dev/block/by-name/cache                             /cache       f2fs    noatime,nosuid,nodev,discard            wait,check,formattable
-/dev/block/by-name/misc                              /misc        emmc    defaults                                defaults
+/dev/block/by-name/misc
