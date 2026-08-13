@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 
-DEVICE_PATH := device/realme/ussi_arm64
+DEVICE_PATH := device/latte
 
 # Architecture
 TARGET_ARCH := arm64
@@ -38,7 +38,6 @@ BOARD_MKBOOTIMG_ARGS += --dtb $(TARGET_PREBUILT_DTB)
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
 
-# ⚠️ КРИТИЧЕСКИ ВАЖНО: Добавьте эти строки
 # Указываем, что recovery должен быть в vendor_boot
 BOARD_USES_RECOVERY_AS_BOOT := true
 BOARD_USES_VENDOR_BOOT := true
