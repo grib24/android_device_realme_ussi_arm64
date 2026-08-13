@@ -5,7 +5,7 @@
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 # Inherit from device-specific configuration
-$(call inherit-product, device/realme/ussi_arm64/device.mk)
+$(call inherit-product, device/latte/device.mk)
 
 # Product Details Configured for Realme C61 (latte)
 PRODUCT_DEVICE := latte
@@ -16,7 +16,7 @@ PRODUCT_MANUFACTURER := realme
 
 PRODUCT_GMS_CLIENTID_BASE := android-realme
 
-# Official Russia Android 16 Fingerprint from ADB Telemetry
+# Official Russia Android 16 Fingerprint
 PRODUCT_BUILD_PROP_OVERRIDES += \
     TARGET_DEVICE="RE6054" \
     PRODUCT_NAME="RMX3930RU" \
