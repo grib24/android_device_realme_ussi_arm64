@@ -1,4 +1,3 @@
-
 # SPDX-FileCopyrightText: The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 
@@ -46,6 +45,9 @@ BOARD_USES_VENDOR_BOOT := true
 
 # Указываем путь к recovery.img, который будет упакован в vendor_boot
 BOARD_PREBUILT_VENDOR_RAMDISK := $(TARGET_OUT)/recovery.img
+
+# Принудительно включаем сборку recovery
+TARGET_NO_RECOVERY := false
 
 # Recovery fstab
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.ums9230_latte
