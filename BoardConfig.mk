@@ -1,3 +1,4 @@
+
 # SPDX-FileCopyrightText: The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 
@@ -37,6 +38,14 @@ BOARD_MKBOOTIMG_ARGS += --dtb $(TARGET_PREBUILT_DTB)
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
+
+# ⚠️ КРИТИЧЕСКИ ВАЖНО: Добавьте эти строки
+# Указываем, что recovery должен быть в vendor_boot
+BOARD_USES_RECOVERY_AS_BOOT := true
+BOARD_USES_VENDOR_BOOT := true
+
+# Указываем путь к recovery.img, который будет упакован в vendor_boot
+BOARD_PREBUILT_VENDOR_RAMDISK := $(TARGET_OUT)/recovery.img
 
 # Recovery fstab
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.ums9230_latte
