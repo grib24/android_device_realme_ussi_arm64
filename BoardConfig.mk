@@ -74,3 +74,6 @@ TW_EXCLUDE_DEFAULT_USB_INIT := true
 
 PLATFORM_VERSION := 16
 BUILD_BROKEN_MISSING_REQUIRED_MODULES := true
+
+# Добавляем поддержку 32-битных приложений на 64-битном устройстве
+TARGET_SUPPORTS_64_BIT_APPS := false
