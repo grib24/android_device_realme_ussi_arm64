@@ -86,6 +86,8 @@ jobs:
 
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
+      with:
+        swap-size: 4096
 
     - name: Setup ccache
       uses: hendrikmuhs/ccache-action@v1.2
