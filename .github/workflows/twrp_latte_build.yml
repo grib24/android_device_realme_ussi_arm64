@@ -162,6 +162,10 @@ jobs:
         kill $TIP_PID && exit 0
       working-directory: workspace
 
+    - name: Remove conflicting Android.bp
+      run: rm -f device/latte/Android.bp
+      working-directory: workspace
+
     - name: Create local manifest
       run: |
         mkdir -p .repo/local_manifests
