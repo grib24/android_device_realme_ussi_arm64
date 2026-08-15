@@ -3,21 +3,6 @@ name: TWRP 16 Builder (latte)
 on:
   workflow_dispatch:
     inputs:
-      MANIFEST_BRANCH:
-        type: choice
-        description: Manifest Branch
-        options:
-        - 16.0
-        - 14.1
-        - 14.0
-        - 12.1
-        - 11
-        - 9.0
-        - 8.1
-        - 7.1
-        - 6.0
-        required: true
-        default: 16.0
       DEVICE_TREE_URL:
         description: Device Tree URL
         required: true
@@ -38,16 +23,11 @@ on:
         type: choice
         description: Partition containing recovery ramdisk
         options:
-        - boot
-        - recovery
-        - vendor_boot
+          - boot
+          - recovery
+          - vendor_boot
         required: true
         default: vendor_boot
-      RECOVERY_INSTALLER:
-        description: Include recovery installer zip
-        type: boolean
-        required: true
-        default: false
       SHOULD_RELEASE:
         description: Create a release
         type: boolean
@@ -60,249 +40,145 @@ jobs:
     timeout-minutes: 300
     permissions:
       contents: write
+
     steps:
-    - name: Show build info
-      run: |
-        echo "BUILD_DATE=$(date +%F)" >> "$GITHUB_ENV"
-        echo "BUILD_TIME=$(date +%H%M)" >> "$GITHUB_ENV"
-        {
-          echo 'BUILD_INFO<<EOF'
-          echo "Manifest Branch: ${{ github.event.inputs.MANIFEST_BRANCH }}"
-          echo "Device Tree URL: ${{ github.event.inputs.DEVICE_TREE_URL }}"
-          echo "Device Tree Branch: ${{ github.event.inputs.DEVICE_TREE_BRANCH }}"
-          echo "Device Path: ${{ github.event.inputs.DEVICE_PATH }}"
-          echo "Device Name: ${{ github.event.inputs.DEVICE_NAME }}"
-          echo "Build Target: ${{ github.event.inputs.BUILD_TARGET }}.img"
-          echo "Build Date: $(date)"
-          echo "Run ID: ${{ github.run_id }}"
-          echo EOF
-        } >> "$GITHUB_ENV"
+      - name: Show build info
+        run: |
+          echo "BUILD_DATE=$(date +%F)" >> "$GITHUB_ENV"
+          echo "BUILD_TIME=$(date +%H%M)" >> "$GITHUB_ENV"
+          {
+            echo 'BUILD_INFO<<EOF'
+            echo "Device Tree URL: ${{ inputs.DEVICE_TREE_URL }}"
+            echo "Device Tree Branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
+            echo "Device Path: ${{ inputs.DEVICE_PATH }}"
+            echo "Device Name: ${{ inputs.DEVICE_NAME }}"
+            echo "Build Target: ${{ inputs.BUILD_TARGET }}.img"
+            echo "Build Date: $(date)"
+            echo "Run ID: ${{ github.run_id }}"
+            echo EOF
+          } >> "$GITHUB_ENV"
 
-    - name: Check Out
-      uses: actions/checkout@v4
+      - name: Check Out
+        uses: actions/checkout@v4
 
-    - name: Show actual workflow file
-      run: |
-        echo "=== Содержимое twrp_latte_build.yml ==="
-        cat .github/workflows/twrp_latte_build.yml
-        echo "=== КОНЕЦ ==="
+      - name: Remove root Android.bp before repo sync
+        run: rm -f Android.bp
 
-    - name: Remove root Android.bp before repo sync
-      run: rm -f Android.bp
+      - name: Cleanup
+        uses: rokibhasansagar/slimhub_actions@main
 
-    - name: Cleanup
-      uses: rokibhasansagar/slimhub_actions@main
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          create-symlink: true
 
-    - name: Setup ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        create-symlink: true
+      - name: Prepare environment
+        run: |
+          sudo apt update
+          sudo apt -y upgrade
+          sudo apt -y install gperf gcc-multilib g++-multilib libc6-dev \
+            lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev \
+            libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev \
+            lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev \
+            libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev \
+            lzma ncftp qemu-user-static libtinfo5 python-is-python3
+          sudo add-apt-repository universe
+          sudo apt -y install libncurses5
+          sudo ln -sf /usr/bin/python3 /usr/bin/python
 
-    - name: Prepare the environment
-      run: |
-        sudo apt update
-        sudo apt -y upgrade
-        sudo apt -y install gperf gcc-multilib g++-multilib libc6-dev \
-          lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev \
-          libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev \
-          lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev \
-          libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev \
-          lzma ncftp qemu-user-static libtinfo5 python-is-python3
-        sudo add-apt-repository universe
-        sudo apt -y install libncurses5
-        sudo ln -sf /usr/bin/python3 /usr/bin/python
+      - name: Install repo
+        run: |
+          mkdir ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/bin/repo
 
-    - name: Install repo
-      run: |
-        mkdir ~/bin
-        curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-        chmod a+x ~/bin/repo
-        sudo ln -sf ~/bin/repo /usr/bin/repo
+      - name: Initialize repo (TWRP 16.0)
+        run: |
+          mkdir -p workspace
+          cd workspace
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+          repo init -u https://github.com/TWRP-Test/platform_manifest_twrp_aosp.git -b twrp-16.0
 
-    - name: Determine manifest
-      id: manifest
-      run: |
-        case "${{ inputs.MANIFEST_BRANCH }}" in
-          "16.0")
-            echo "manifest_url=https://github.com/TWRP-Test/platform_manifest_twrp_aosp.git" >> $GITHUB_OUTPUT
-            echo "manifest_branch=twrp-16.0" >> $GITHUB_OUTPUT
-            echo "release=bp2a" >> $GITHUB_OUTPUT
-            ;;
-          "14.1")
-            echo "manifest_url=https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git" >> $GITHUB_OUTPUT
-            echo "manifest_branch=twrp-14.1" >> $GITHUB_OUTPUT
-            echo "release=ap2a" >> $GITHUB_OUTPUT
-            ;;
-          "14.0")
-            echo "manifest_url=https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git" >> $GITHUB_OUTPUT
-            echo "manifest_branch=twrp-14.0" >> $GITHUB_OUTPUT
-            echo "release=ap2a" >> $GITHUB_OUTPUT
-            ;;
-          "12.1"|"11")
-            echo "manifest_url=https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git" >> $GITHUB_OUTPUT
-            echo "manifest_branch=twrp-${{ inputs.MANIFEST_BRANCH }}" >> $GITHUB_OUTPUT
-            echo "release=eng" >> $GITHUB_OUTPUT
-            ;;
-          *)
-            echo "manifest_url=https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git" >> $GITHUB_OUTPUT
-            echo "manifest_branch=twrp-${{ inputs.MANIFEST_BRANCH }}" >> $GITHUB_OUTPUT
-            echo "release=eng" >> $GITHUB_OUTPUT
-            ;;
-        esac
+      - name: Repo Sync
+        run: |
+          cd workspace
+          (while true; do echo "Syncing source..."; sleep 60; done) &
+          TIP_PID=$!
+          repo sync -j$(nproc --all) --force-sync
+          kill $TIP_PID && exit 0
 
-    - name: Initialize repo
-      run: |
-        mkdir -p workspace
-        git config --global user.name "${GITHUB_ACTOR}"
-        git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
-        repo init --depth=1 -u ${{ steps.manifest.outputs.manifest_url }} -b ${{ steps.manifest.outputs.manifest_branch }}
+      - name: Clone device tree
+        run: |
+          cd workspace
+          git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
+          # Удаляем конфликтный Android.bp, если он есть
+          rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
 
-    - name: Repo Sync
-      run: |
-        (while true; do echo "Syncing source..."; sleep 60; done) &
-        TIP_PID=$!
-        repo sync -j$(nproc --all) --force-sync
-        kill $TIP_PID && exit 0
-      working-directory: workspace
+      - name: Build TWRP
+        run: |
+          cd workspace
+          source build/envsetup.sh
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export PLATFORM_VERSION=16
+          export CCACHE_DIR=.ccache
+          export CCACHE_EXEC=$(command -v ccache)
+          export CCACHE_MAXSIZE=5G
+          export USE_CCACHE=1
 
-    - name: Create local manifest
-      run: |
-        mkdir -p .repo/local_manifests
-        cat > .repo/local_manifests/latte.xml << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <manifest>
-          <project path="device/latte" name="grib24/android_device_realme_ussi_arm64" revision="main" remote="github" />
-        </manifest>
-        EOF
-        repo sync -j$(nproc --all) --force-sync
-      working-directory: workspace
+          RELEASE="bp2a"
+          LUNCH_TARGET="twrp_${{ inputs.DEVICE_NAME }}-${RELEASE}-eng"
 
-    - name: Remove conflicting Android.bp
-      run: rm -f device/latte/Android.bp
-      working-directory: workspace
+          echo "Trying lunch: $LUNCH_TARGET"
+          if lunch $LUNCH_TARGET 2>/dev/null; then
+            echo "✅ Lunch succeeded"
+          else
+            echo "Lunch failed, using direct make with TARGET_RELEASE..."
+            export TARGET_PRODUCT=twrp_${{ inputs.DEVICE_NAME }}
+            export TARGET_DEVICE=${{ inputs.DEVICE_NAME }}
+            export TARGET_RELEASE=${RELEASE}
+          fi
 
-    - name: Debug workspace contents
-      run: |
-        echo "=== Текущая директория ==="
-        pwd
-        echo "=== Содержимое корня workspace ==="
-        ls -la
-        echo "=== Поиск envsetup.sh ==="
-        find . -maxdepth 3 -name "envsetup.sh" 2>/dev/null || echo "envsetup.sh не найден"
-        echo "=== Проверка наличия build/ ==="
-        ls -ld build 2>/dev/null || echo "Папка build отсутствует"
-      working-directory: workspace
+          echo "=== BUILDING RECOVERY ==="
+          (while true; do echo `date +%T` "Building TWRP..."; free -h; sleep 10; done) &
+          TIP_PID=$!
+          mka recoveryimage || echo "mka recoveryimage failed with exit code $?"
 
-    - name: Repopick Gerrit patches
-      if: inputs.REPOPICK_PATCHES != null
-      run: |
-        source build/envsetup.sh
-        repopick -g https://gerrit.twrp.me ${{ inputs.REPOPICK_PATCHES }}
-      working-directory: workspace
-      continue-on-error: true
+          echo "=== BUILDING VENDOR_BOOT ==="
+          mka vendorbootimage || echo "mka vendorbootimage failed with exit code $?"
+          kill $TIP_PID && exit 0
 
-    - name: Include Recovery Installer
-      if: inputs.RECOVERY_INSTALLER == true && inputs.MANIFEST_BRANCH != '6.0' && inputs.BUILD_TARGET != 'vendor_boot'
-      run: |
-        source build/envsetup.sh
-        case ${{ inputs.MANIFEST_BRANCH }} in
-          7.1)
-            patchNum=5080
-            ;;
-          8.1)
-            patchNum=5079
-            ;;
-          9.0)
-            patchNum=5037
-            ;;
-          11)
-            patchNum=4964
-            ;;
-          12.1)
-            patchNum=5445
-            ;;
-        esac
-        repopick -g https://gerrit.twrp.me ${patchNum}
-      working-directory: workspace
-      id: recoveryinstaller
-      continue-on-error: true
+          echo "=== CHECKING RESULTS ==="
+          ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot"
 
-    - name: Install Python 2
-      if: steps.manifest.outputs.build_type == 'omni'
-      run: |
-        sudo apt -y install python2
-        cd /usr/bin
-        sudo ln -sf python2 python
+          # Переименовываем файл
+          if [ -f out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img ]; then
+            mv out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
+               out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
+            echo "✅ Renamed to TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img"
+          fi
 
-    - name: Building TWRP
-      run: |
-        source build/envsetup.sh
-        export ALLOW_MISSING_DEPENDENCIES=true
-        export PLATFORM_VERSION=16
-        export CCACHE_DIR=.ccache
-        export CCACHE_EXEC=$(command -v ccache)        
-        export CCACHE_MAXSIZE=5G
-        export USE_CCACHE=1
-        
-        if [ ${{ inputs.RECOVERY_INSTALLER }} = true ] && [ ${{ steps.recoveryinstaller.outcome == 'success' }} ]; then
-          export USE_RECOVERY_INSTALLER=true
-          export RECOVERY_INSTALLER_PATH=bootable/recovery/installer
-        fi
-        
-        RELEASE="${{ steps.manifest.outputs.release }}"
-        LUNCH_TARGET="twrp_${{ inputs.DEVICE_NAME }}-${RELEASE}-eng"
-        
-        echo "Trying lunch: $LUNCH_TARGET"
-        if lunch $LUNCH_TARGET 2>/dev/null; then
-          echo "✅ Lunch succeeded"
-        else
-          echo "Lunch failed, using direct make with TARGET_RELEASE..."
-          export TARGET_PRODUCT=twrp_${{ inputs.DEVICE_NAME }}
-          export TARGET_DEVICE=${{ inputs.DEVICE_NAME }}
-          export TARGET_RELEASE=${RELEASE}
-        fi
-        
-        echo "=== BUILDING RECOVERY ==="
-        (while true; do echo `date +%T` "Building TWRP..."; free -h; sleep 10; done) &
-        TIP_PID=$!
-        mka recoveryimage || echo "mka recoveryimage failed with exit code $?"
-        
-        echo "=== BUILDING VENDOR_BOOT ==="
-        mka vendorbootimage || echo "mka vendorbootimage failed with exit code $?"
-        kill $TIP_PID && exit 0
-        
-        echo "=== CHECKING RESULTS ==="
-        ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot"
-        
-        # Переименовываем файл
-        if [ -f out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img ]; then
-          mv out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
-             out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
-          echo "✅ Renamed to TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img"
-        fi
-      working-directory: workspace
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}
+          path: workspace/out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
+          retention-days: 30
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}
-        path: workspace/out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
-        retention-days: 30
-
-    - name: Upload to Release
-      if: ${{ inputs.SHOULD_RELEASE == 'true' }}
-      uses: softprops/action-gh-release@v2
-      with:
-        files: |
-          workspace/out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
-        name: TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}-${{ github.run_id }}
-        tag_name: ${{ env.BUILD_DATE }}-${{ github.run_id }}
-        body: |
-          Manifest: ${{ inputs.MANIFEST_BRANCH }}
-          Target: ${{ inputs.BUILD_TARGET }}.img
-          Device: ${{ inputs.DEVICE_NAME }}
-          Build Date: ${{ env.BUILD_DATE }}
-          Run ID: ${{ github.run_id }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      continue-on-error: true
+      - name: Upload to Release
+        if: ${{ inputs.SHOULD_RELEASE == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
+          name: TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}-${{ github.run_id }}
+          tag_name: ${{ env.BUILD_DATE }}-${{ github.run_id }}
+          body: |
+            Device: ${{ inputs.DEVICE_NAME }}
+            Build Target: ${{ inputs.BUILD_TARGET }}.img
+            Build Date: ${{ env.BUILD_DATE }}
+            Run ID: ${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
