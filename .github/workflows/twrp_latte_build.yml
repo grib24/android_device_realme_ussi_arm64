@@ -149,7 +149,6 @@ jobs:
     - name: Initialize repo
       run: |
         mkdir -p workspace
-        cd workspace
         git config --global user.name "${GITHUB_ACTOR}"
         git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
         repo init --depth=1 -u ${{ steps.manifest.outputs.manifest_url }} -b ${{ steps.manifest.outputs.manifest_branch }}
@@ -214,12 +213,6 @@ jobs:
         sudo apt -y install python2
         cd /usr/bin
         sudo ln -sf python2 python
-
-    - name: Fix working directory (just in case)
-      run: |
-        cd $GITHUB_WORKSPACE
-        pwd
-      # Этот шаг гарантирует, что мы находимся в корне, если предыдущие шаги перешли куда-то
 
     - name: Building TWRP
       run: |
