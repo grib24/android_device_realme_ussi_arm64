@@ -28,14 +28,15 @@ BOARD_KERNEL_CMDLINE := console=ttyS1,921600n8 bootconfig bootconfig
 BOARD_KERNEL_PAGESIZE := 4096
 BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
 
-BOARD_KERNEL_IMAGE_NAME := dtb.img
-TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilts/dtb.img
-
 # Prebuilt DTB Image configuration (Obligatory for vendor_boot Header v4)
 TARGET_FORCE_PREBUILT_KERNEL := false
 TARGET_PREBUILT_DTB := $(DEVICE_PATH)/prebuilts/dtb.img
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 BOARD_MKBOOTIMG_ARGS += --dtb $(TARGET_PREBUILT_DTB)
+
+# Обход проверки TWRP: используем DTB как фиктивное ядро
+BOARD_KERNEL_IMAGE_NAME := dtb.img
+TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilts/dtb.img
 
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144
