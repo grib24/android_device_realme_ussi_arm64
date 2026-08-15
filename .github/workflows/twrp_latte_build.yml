@@ -81,6 +81,9 @@ jobs:
     - name: Check Out
       uses: actions/checkout@v4
 
+    - name: Remove root Android.bp before repo sync
+      run: rm -f Android.bp
+
     - name: Show actual workflow file
       run: |
        echo "=== Содержимое twrp_latte_build.yml ==="
