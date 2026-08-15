@@ -81,14 +81,14 @@ jobs:
     - name: Check Out
       uses: actions/checkout@v4
 
-    - name: Remove root Android.bp before repo sync
-      run: rm -f Android.bp
-
     - name: Show actual workflow file
       run: |
-       echo "=== Содержимое twrp_latte_build.yml ==="
-       cat .github/workflows/twrp_latte_build.yml
-       echo "=== КОНЕЦ ==="
+        echo "=== Содержимое twrp_latte_build.yml ==="
+        cat .github/workflows/twrp_latte_build.yml
+        echo "=== КОНЕЦ ==="
+
+    - name: Remove root Android.bp before repo sync
+      run: rm -f Android.bp
 
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
@@ -156,7 +156,7 @@ jobs:
         git config --global user.name "${GITHUB_ACTOR}"
         git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
         repo init --depth=1 -u ${{ steps.manifest.outputs.manifest_url }} -b ${{ steps.manifest.outputs.manifest_branch }}
-          
+
     - name: Repo Sync
       run: |
         (while true; do echo "Syncing source..."; sleep 60; done) &
@@ -167,18 +167,30 @@ jobs:
 
     - name: Create local manifest
       run: |
-       mkdir -p .repo/local_manifests
-       cat > .repo/local_manifests/latte.xml << EOF
-       <?xml version="1.0" encoding="UTF-8"?>
-       <manifest>
-       <project path="device/latte" name="grib24/android_device_realme_ussi_arm64" revision="main" remote="github" />
-       </manifest>
-       EOF
-       repo sync -j$(nproc --all) --force-sync
+        mkdir -p .repo/local_manifests
+        cat > .repo/local_manifests/latte.xml << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <manifest>
+          <project path="device/latte" name="grib24/android_device_realme_ussi_arm64" revision="main" remote="github" />
+        </manifest>
+        EOF
+        repo sync -j$(nproc --all) --force-sync
       working-directory: workspace
 
     - name: Remove conflicting Android.bp
       run: rm -f device/latte/Android.bp
+      working-directory: workspace
+
+    - name: Debug workspace contents
+      run: |
+        echo "=== Текущая директория ==="
+        pwd
+        echo "=== Содержимое корня workspace ==="
+        ls -la
+        echo "=== Поиск envsetup.sh ==="
+        find . -maxdepth 3 -name "envsetup.sh" 2>/dev/null || echo "envsetup.sh не найден"
+        echo "=== Проверка наличия build/ ==="
+        ls -ld build 2>/dev/null || echo "Папка build отсутствует"
       working-directory: workspace
 
     - name: Repopick Gerrit patches
