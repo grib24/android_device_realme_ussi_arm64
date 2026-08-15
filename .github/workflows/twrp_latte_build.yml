@@ -81,6 +81,12 @@ jobs:
     - name: Check Out
       uses: actions/checkout@v4
 
+    - name: Show actual workflow file
+      run: |
+       echo "=== Содержимое twrp_latte_build.yml ==="
+       cat .github/workflows/twrp_latte_build.yml
+       echo "=== КОНЕЦ ==="
+
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
 
