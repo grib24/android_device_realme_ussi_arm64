@@ -38,6 +38,9 @@ BOARD_MKBOOTIMG_ARGS += --dtb $(TARGET_PREBUILT_DTB)
 BOARD_KERNEL_IMAGE_NAME := dtb.img
 TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilts/dtb.img
 
+# Копируем dtb.img в out/target/product/latte/
+PRODUCT_COPY_FILES += $(DEVICE_PATH)/prebuilts/dtb.img:dtb.img
+
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
