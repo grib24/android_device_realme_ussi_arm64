@@ -167,14 +167,14 @@ jobs:
 
     - name: Create local manifest
       run: |
-        mkdir -p .repo/local_manifests
-        cat > .repo/local_manifests/latte.xml << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <manifest>
-          <project path="device/latte" name="grib24/android_device_realme_ussi_arm64" revision="main" remote="github" />
-        </manifest>
-        EOF
-        repo sync -j$(nproc --all) device/latte
+       mkdir -p .repo/local_manifests
+       cat > .repo/local_manifests/latte.xml << EOF
+       <?xml version="1.0" encoding="UTF-8"?>
+       <manifest>
+       <project path="device/latte" name="grib24/android_device_realme_ussi_arm64" revision="main" remote="github" />
+       </manifest>
+       EOF
+       repo sync -j$(nproc --all) --force-sync
       working-directory: workspace
 
     - name: Remove conflicting Android.bp
