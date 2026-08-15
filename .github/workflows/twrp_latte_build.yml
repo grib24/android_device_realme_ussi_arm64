@@ -77,7 +77,6 @@ jobs:
           echo "Run ID: ${{ github.run_id }}"
           echo EOF
         } >> "$GITHUB_ENV"
-      working-directory: workspace
 
     - name: Check Out
       uses: actions/checkout@v4
