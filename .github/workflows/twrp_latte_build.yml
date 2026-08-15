@@ -217,7 +217,6 @@ jobs:
 
     - name: Building TWRP
       run: |
-        cd workspace
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
         export PLATFORM_VERSION=16
