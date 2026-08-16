@@ -21,16 +21,16 @@ TARGET_NO_BOOTLOADER := true
 # Display
 TARGET_SCREEN_DENSITY := 320
 
-# Kernel Specs (для vendor_boot ядро не нужно)
+# Kernel Specs
 BOARD_BOOT_HEADER_VERSION := 4
 BOARD_KERNEL_BASE := 0x00000000
 BOARD_KERNEL_CMDLINE := console=ttyS1,921600n8 bootconfig bootconfig
 BOARD_KERNEL_PAGESIZE := 4096
 
-# Ядро не используется в vendor_boot – отключаем его
+# Отключаем сборку boot.img, так как ядро встроенного стока нам не нужно
 TARGET_NO_KERNEL := true
 
-# Prebuilt DTB (обязательно для header v4)
+# Prebuilt DTB Image configuration (Обязательно для vendor_boot Header v4)
 TARGET_PREBUILT_DTB := $(DEVICE_PATH)/prebuilts/dtb.img
 BOARD_PREBUILT_DTBIMAGE_DIR := $(DEVICE_PATH)/prebuilts
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
@@ -39,16 +39,25 @@ BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
 
-# ========== ОСНОВНЫЕ НАСТРОЙКИ (правильные для vendor_boot) ==========
+# ========== СТРУКТУРА РАЗДЕЛОВ ПОД VENDOR_BOOT (Android 16) ==========
+# Включаем использование разделения vendor_boot
 BOARD_USES_VENDOR_BOOT := true
-BOARD_USES_RECOVERY_AS_BOOT := true   # recovery внутри vendor_boot
-TARGET_NO_RECOVERY := false
 
-# НЕ УКАЗЫВАЕМ BOARD_PREBUILT_VENDOR_RAMDISK – система сама возьмёт ramdisk из recovery
-# НЕ УКАЗЫВАЕМ TARGET_PREBUILT_KERNEL и BOARD_KERNEL_IMAGE_NAME – ядро не нужно
+# Сообщаем системе, что классического отдельного recovery.img нет
+TARGET_NO_RECOVERY := true
+
+# Отключаем устаревшую схему встраивания рекавери в обычный boot
+BOARD_USES_RECOVERY_AS_BOOT := false
+
+# Заставляем TWRP собираться прямо в рамдиск раздела vendor_boot
+# На выходе автоматика создаст рабочий vendor_boot.img
+BOARD_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
+
+# Разрешаем копирование конфигурационных скриптов в рамдиск вендора
+BOARD_COPY_RC_TO_VENDOR_BOOT := true
 # ======================================================================
 
-# Recovery fstab
+# Recovery fstab (Автоматика сама разложит его по нужным каталогам)
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.ums9230_latte
 
 # Platform
@@ -59,7 +68,7 @@ TARGET_RECOVERY_PIXEL_FORMAT := "BGRA_8888"
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
 
-# Verified Boot
+# Verified Boot (Отключение проверок целостности при сборке образов)
 BOARD_AVB_ENABLE := true
 BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
 
@@ -74,5 +83,3 @@ TW_EXCLUDE_DEFAULT_USB_INIT := true
 
 PLATFORM_VERSION := 16
 BUILD_BROKEN_MISSING_REQUIRED_MODULES := true
-
-# Удалено: TARGET_SUPPORTS_64_BIT_APPS (не нужно)
