@@ -21,19 +21,20 @@ TARGET_NO_BOOTLOADER := true
 # Display
 TARGET_SCREEN_DENSITY := 320
 
-# Kernel Specs Configured for Realme C61 Stock (921600n8 console speed)
+# Kernel Specs
 BOARD_BOOT_HEADER_VERSION := 4
 BOARD_KERNEL_BASE := 0x00000000
 BOARD_KERNEL_CMDLINE := console=ttyS1,921600n8 bootconfig bootconfig
 BOARD_KERNEL_PAGESIZE := 4096
-BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
 
-# Prebuilt DTB Image configuration (Obligatory for vendor_boot Header v4)
+# ⚠️ Убрано: BOARD_MKBOOTIMG_ARGS += --dtb ...
+# Вместо этого используем BOARD_PREBUILT_DTBIMAGE_DIR
+
+# Prebuilt DTB (правильный способ для vendor_boot v4)
 TARGET_FORCE_PREBUILT_KERNEL := false
 TARGET_PREBUILT_DTB := $(DEVICE_PATH)/prebuilts/dtb.img
 BOARD_PREBUILT_DTBIMAGE_DIR := $(DEVICE_PATH)/prebuilts
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
-BOARD_MKBOOTIMG_ARGS += --dtb $(TARGET_PREBUILT_DTB)
 
 # Обход проверки TWRP: используем DTB как фиктивное ядро
 BOARD_KERNEL_IMAGE_NAME := dtb.img
@@ -43,19 +44,14 @@ TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilts/dtb.img
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
 
-# ========== НАСТРОЙКИ ДЛЯ РАБОЧЕГО VENDOR_BOOT ==========
-
-# Включаем сборку vendor_boot
+# ========== ОСНОВНЫЕ НАСТРОЙКИ (исправлены) ==========
 BOARD_USES_VENDOR_BOOT := true
-
-# Отключаем встраивание recovery в boot (recovery будет отдельным файлом)
 BOARD_USES_RECOVERY_AS_BOOT := false
-
-# Указываем, что recovery.img будет использован как ramdisk для vendor_boot
-BOARD_PREBUILT_VENDOR_RAMDISK := $(TARGET_OUT)/recovery.img
-
-# Принудительно включаем сборку recovery
 TARGET_NO_RECOVERY := false
+
+# ✅ НЕ используем BOARD_PREBUILT_VENDOR_RAMDISK – полагаемся на автоматику
+# ✅ Убрана строка TARGET_SUPPORTS_64_BIT_APPS – она не нужна
+# =====================================================
 
 # Recovery fstab
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.ums9230_latte
@@ -84,5 +80,4 @@ TW_EXCLUDE_DEFAULT_USB_INIT := true
 PLATFORM_VERSION := 16
 BUILD_BROKEN_MISSING_REQUIRED_MODULES := true
 
-# Добавляем поддержку 32-битных приложений на 64-битном устройстве
-TARGET_SUPPORTS_64_BIT_APPS := false
+# Удалено: TARGET_SUPPORTS_64_BIT_APPS := false
