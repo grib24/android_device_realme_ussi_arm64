@@ -67,6 +67,15 @@ jobs:
       - name: Cleanup
         uses: rokibhasansagar/slimhub_actions@main
 
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 12288
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+
+
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
