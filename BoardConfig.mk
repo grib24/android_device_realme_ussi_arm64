@@ -27,9 +27,8 @@ BOARD_KERNEL_BASE := 0x00000000
 BOARD_KERNEL_CMDLINE := console=ttyS1,921600n8 bootconfig bootconfig
 BOARD_KERNEL_PAGESIZE := 4096
 
-# Исправление синтаксиса аргументов mkbootimg для корректной сборки Header v4 в Android 16
+# Базовые аргументы сборщика образов. Оставляем только один чистый заголовок v4
 BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
-BOARD_MKBOOTIMG_ARGS += --vendor_boot_header_version $(BOARD_BOOT_HEADER_VERSION)
 
 # Отключаем сборку boot.img, так как ядро встроенного стока нам не нужно
 TARGET_NO_KERNEL := true
@@ -54,10 +53,8 @@ TARGET_NO_RECOVERY := true
 BOARD_USES_RECOVERY_AS_BOOT := false
 
 # Заставляем TWRP собираться прямо в рамдиск раздела vendor_boot
+# На выходе автоматика создаст рабочий vendor_boot.img
 BOARD_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
-
-# Явно указываем структуру фрагментов, чтобы mkbootfs не падал из-за отсутствия папки vendor_ramdisk
-BOARD_VENDOR_RAMDISK_FRAGMENTS := recovery
 
 # Разрешаем копирование конфигурационных скриптов в рамдиск вендора
 BOARD_COPY_RC_TO_VENDOR_BOOT := true
