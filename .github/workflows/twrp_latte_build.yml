@@ -160,7 +160,6 @@ jobs:
           echo "=== CHECKING RESULTS ==="
           ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot"
 
-          # Переименовываем файл (если есть) для релиза
           if [ -f out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img ]; then
             mv out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
                out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
@@ -169,37 +168,127 @@ jobs:
             echo "⚠️ vendor_boot.img not found, skipping rename"
           fi
 
-      - name: Debug output files
+      - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
         run: |
-          echo "=== Содержимое out/target/product/latte/ ==="
-          ls -la workspace/out/target/product/latte/
+          echo "==============================================="
+          echo "     ГЛУБОКАЯ ДИАГНОСТИКА VENDOR_BOOT"
+          echo "==============================================="
+          echo ""
 
-          echo "=== Проверка наличия и РАЗМЕРА файлов ==="
-          if [ -f workspace/out/target/product/latte/vendor_boot.img ]; then
-            echo "✅ vendor_boot.img присутствует"
-            ls -l workspace/out/target/product/latte/vendor_boot.img
+          OUT_DIR="workspace/out/target/product/latte"
+          echo "📁 Проверяем папку: $OUT_DIR"
+          ls -la $OUT_DIR | grep -E "recovery|vendor_boot|ramdisk"
+          echo ""
 
-            echo "=== ГЛУБОКИЙ АНАЛИЗ СТРУКТУРЫ VENDOR_BOOT ==="
-            python3 workspace/system/tools/mkbootimg/unpack_bootimg.py --boot_img workspace/out/target/product/latte/vendor_boot.img --out workspace/out_analysis
-
-            echo "=== МЕТАДАННЫЕ ИЗ UNPACK_BOOTIMG ==="
-            ls -la workspace/out_analysis
-
-            if [ -f workspace/out_analysis/vendor_ramdisk00 ]; then
-              echo "📊 Размер извлеченного vendor_ramdisk00:"
-              ls -l workspace/out_analysis/vendor_ramdisk00
+          # 1. Проверка recovery.img
+          echo "🔎 [1] Проверка recovery.img"
+          if [ -f "$OUT_DIR/recovery.img" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/recovery.img")
+            echo "   ✅ recovery.img найден (размер: $SIZE байт)"
+            if [ $SIZE -lt 1024 ]; then
+              echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: recovery.img слишком мал (<1KB) — собран пустой образ!"
             fi
           else
-            echo "❌ vendor_boot.img ОТСУТСТВУЕТ!"
+            echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: recovery.img ОТСУТСТВУЕТ!"
+            echo "   ➡️ Причина: TARGET_NO_RECOVERY или BOARD_USES_RECOVERY_AS_BOOT настроены неверно."
           fi
+          echo ""
 
-          echo "=== Проверка промежуточного рамдиска TWRP ==="
-          if [ -f workspace/out/target/product/latte/ramdisk-recovery.cpio ]; then
-            echo "✅ ramdisk-recovery.cpio собран!"
-            ls -l workspace/out/target/product/latte/ramdisk-recovery.cpio
+          # 2. Проверка vendor_boot.img (размер)
+          echo "🔎 [2] Проверка vendor_boot.img"
+          if [ -f "$OUT_DIR/vendor_boot.img" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/vendor_boot.img")
+            MAX_SIZE=104857600
+            echo "   ✅ vendor_boot.img найден (размер: $SIZE байт)"
+            if [ $SIZE -eq $MAX_SIZE ]; then
+              echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: размер равен максимальному ($MAX_SIZE) — это ПУСТАЯ ЗАГЛУШКА!"
+              echo "   ➡️ Причина: в vendor_boot не упакован ramdisk (не создан recovery.img или не указан BOARD_PREBUILT_VENDOR_RAMDISK)."
+            elif [ $SIZE -lt 10485760 ]; then
+              echo "   ⚠️ ПРЕДУПРЕЖДЕНИЕ: размер меньше 10MB — возможно, внутри только DTB, без ramdisk."
+            else
+              echo "   ✅ Размер нормальный (вероятно, ramdisk присутствует)"
+            fi
           else
-            echo "❌ ramdisk-recovery.cpio ОТСУТСТВУЕТ в out! Проверьте сборку Soong."
+            echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: vendor_boot.img ОТСУТСТВУЕТ!"
           fi
+          echo ""
+
+          # 3. Проверка промежуточного ramdisk (ramdisk-recovery.cpio)
+          echo "🔎 [3] Проверка промежуточного ramdisk"
+          if [ -f "$OUT_DIR/ramdisk-recovery.cpio" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/ramdisk-recovery.cpio")
+            echo "   ✅ ramdisk-recovery.cpio найден (размер: $SIZE байт)"
+            if [ $SIZE -lt 1024 ]; then
+              echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: ramdisk слишком мал (<1KB) — TWRP не собран!"
+            fi
+          elif [ -f "$OUT_DIR/obj/PACKAGING/recovery_intermediates/ramdisk.cpio" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/obj/PACKAGING/recovery_intermediates/ramdisk.cpio")
+            echo "   ⚠️ ramdisk-recovery.cpio отсутствует в корне, но найден в obj/ (размер: $SIZE)"
+            echo "   ➡️ Возможно, он не скопирован в корень — проверь PRODUCT_COPY_FILES."
+          else
+            echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: ramdisk-recovery.cpio НЕ НАЙДЕН!"
+            echo "   ➡️ TWRP не собрался (проверь vendor/twrp/config/common.mk и lunch target)."
+          fi
+          echo ""
+
+          # 4. Распаковка vendor_boot.img (если он есть)
+          if [ -f "$OUT_DIR/vendor_boot.img" ]; then
+            echo "🔎 [4] Распаковка vendor_boot.img для анализа структуры"
+            mkdir -p workspace/out_analysis
+            python3 workspace/system/tools/mkbootimg/unpack_bootimg.py --boot_img "$OUT_DIR/vendor_boot.img" --out workspace/out_analysis 2>&1 || echo "   ⚠️ unpack_bootimg.py завершился с ошибкой (возможно, скрипт отсутствует)."
+
+            echo "   📂 Содержимое out_analysis:"
+            ls -la workspace/out_analysis/
+
+            if [ -f "workspace/out_analysis/vendor_ramdisk00" ]; then
+              SIZE=$(stat -c%s "workspace/out_analysis/vendor_ramdisk00")
+              echo "   ✅ vendor_ramdisk00 найден (размер: $SIZE байт)"
+              file workspace/out_analysis/vendor_ramdisk00
+              if cpio -t < workspace/out_analysis/vendor_ramdisk00 2>&1 | grep -q "sbin/recovery"; then
+                echo "   ✅ Внутри ramdisk найден 'sbin/recovery' — TWRP присутствует!"
+              else
+                echo "   ❌ ВНИМАНИЕ: внутри ramdisk НЕТ 'sbin/recovery' — это не TWRP!"
+                echo "   ➡️ Возможно, в recovery.img попал не тот ramdisk."
+              fi
+            else
+              echo "   ❌ vendor_ramdisk00 ОТСУТСТВУЕТ — в vendor_boot нет ramdisk!"
+              echo "   ➡️ Проверь BOARD_PREBUILT_VENDOR_RAMDISK и путь к recovery.img."
+            fi
+
+            if [ -f "workspace/out_analysis/dtb" ]; then
+              echo "   ✅ DTB найден (размер: $(stat -c%s workspace/out_analysis/dtb) байт)"
+            else
+              echo "   ⚠️ DTB не найден — возможно, vendor_boot без DTB (но для header v4 он обязателен)."
+            fi
+          fi
+          echo ""
+
+          # 5. Проверка fstab внутри vendor_ramdisk (если удалось распаковать)
+          if [ -f "workspace/out_analysis/vendor_ramdisk00" ]; then
+            echo "🔎 [5] Проверка наличия fstab внутри ramdisk"
+            mkdir -p workspace/out_analysis/ramdisk_contents
+            cpio -id -D workspace/out_analysis/ramdisk_contents < workspace/out_analysis/vendor_ramdisk00 2>&1 >/dev/null
+
+            if [ -f "workspace/out_analysis/ramdisk_contents/etc/recovery.fstab" ]; then
+              echo "   ✅ recovery.fstab найден в /etc/"
+              echo "   ➡️ Первые 5 строк:"
+              head -5 workspace/out_analysis/ramdisk_contents/etc/recovery.fstab
+            elif [ -f "workspace/out_analysis/ramdisk_contents/system/etc/recovery.fstab" ]; then
+              echo "   ✅ recovery.fstab найден в /system/etc/"
+              echo "   ➡️ Первые 5 строк:"
+              head -5 workspace/out_analysis/ramdisk_contents/system/etc/recovery.fstab
+            elif [ -f "workspace/out_analysis/ramdisk_contents/fstab.ums9230_latte" ]; then
+              echo "   ✅ fstab.ums9230_latte найден в корне (загрузчик)"
+            else
+              echo "   ❌ recovery.fstab НЕ НАЙДЕН внутри ramdisk!"
+              echo "   ➡️ TWRP не сможет монтировать разделы. Проверь PRODUCT_COPY_FILES."
+            fi
+          fi
+          echo ""
+
+          echo "==============================================="
+          echo "     ДИАГНОСТИКА ЗАВЕРШЕНА"
+          echo "==============================================="
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
