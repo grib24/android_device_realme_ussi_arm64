@@ -83,3 +83,6 @@ TW_EXCLUDE_DEFAULT_USB_INIT := true
 
 PLATFORM_VERSION := 16
 BUILD_BROKEN_MISSING_REQUIRED_MODULES := true
+# Разрешаем сборку 64-битного окружения на 64-битном девайсе
+TARGET_SUPPORTS_64_BIT_APPS := true
+
