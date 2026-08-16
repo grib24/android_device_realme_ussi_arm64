@@ -45,15 +45,28 @@ PRODUCT_COPY_FILES += $(DEVICE_PATH)/prebuilts/dtb.img:dtb.img
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
 
-# Указываем, что recovery должен быть в vendor_boot
-BOARD_USES_RECOVERY_AS_BOOT := true
+# ========== ИСПРАВЛЕНИЯ ДЛЯ РАБОЧЕГО VENDOR_BOOT ==========
+
+# Отключаем встраивание recovery в boot (теперь recovery будет отдельным файлом)
+BOARD_USES_RECOVERY_AS_BOOT := false
+
+# Включаем сборку vendor_boot (образ для загрузки recovery)
 BOARD_USES_VENDOR_BOOT := true
 
-# Указываем путь к recovery.img, который будет упакован в vendor_boot
+# Указываем, что recovery.img будет использован как ramdisk для vendor_boot
 BOARD_PREBUILT_VENDOR_RAMDISK := $(TARGET_OUT)/recovery.img
 
-# Принудительно включаем сборку recovery
+# Принудительно включаем сборку recovery (чтобы появился recovery.img)
 TARGET_NO_RECOVERY := false
+
+# Добавляем recovery в список пакетов (гарантирует его сборку)
+PRODUCT_PACKAGES += recovery
+
+# Если у вас есть папка vendor_ramdisk с дополнительными файлами (второй ramdisk),
+# раскомментируйте следующую строку и создайте эту папку в device/latte/
+BOARD_VENDOR_RAMDISK_RECOVERY_IMAGE := $(DEVICE_PATH)/vendor_ramdisk
+
+# ============================================================
 
 # Recovery fstab
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.ums9230_latte
