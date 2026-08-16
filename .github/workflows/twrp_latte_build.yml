@@ -173,19 +173,32 @@ jobs:
         run: |
           echo "=== Содержимое out/target/product/latte/ ==="
           ls -la workspace/out/target/product/latte/
-          echo "=== Проверка наличия recovery.img ==="
-          if [ -f workspace/out/target/product/latte/recovery.img ]; then
-            echo "✅ recovery.img присутствует"
-            ls -l workspace/out/target/product/latte/recovery.img
-          else
-            echo "❌ recovery.img ОТСУТСТВУЕТ!"
-          fi
-          echo "=== Проверка наличия vendor_boot.img ==="
+
+          echo "=== Проверка наличия и РАЗМЕРА файлов ==="
           if [ -f workspace/out/target/product/latte/vendor_boot.img ]; then
             echo "✅ vendor_boot.img присутствует"
             ls -l workspace/out/target/product/latte/vendor_boot.img
+
+            echo "=== ГЛУБОКИЙ АНАЛИЗ СТРУКТУРЫ VENDOR_BOOT ==="
+            python3 workspace/system/tools/mkbootimg/unpack_bootimg.py --boot_img workspace/out/target/product/latte/vendor_boot.img --out workspace/out_analysis
+
+            echo "=== МЕТАДАННЫЕ ИЗ UNPACK_BOOTIMG ==="
+            ls -la workspace/out_analysis
+
+            if [ -f workspace/out_analysis/vendor_ramdisk00 ]; then
+              echo "📊 Размер извлеченного vendor_ramdisk00:"
+              ls -l workspace/out_analysis/vendor_ramdisk00
+            fi
           else
             echo "❌ vendor_boot.img ОТСУТСТВУЕТ!"
+          fi
+
+          echo "=== Проверка промежуточного рамдиска TWRP ==="
+          if [ -f workspace/out/target/product/latte/ramdisk-recovery.cpio ]; then
+            echo "✅ ramdisk-recovery.cpio собран!"
+            ls -l workspace/out/target/product/latte/ramdisk-recovery.cpio
+          else
+            echo "❌ ramdisk-recovery.cpio ОТСУТСТВУЕТ в out! Проверьте сборку Soong."
           fi
 
       - name: Upload Artifact
