@@ -75,7 +75,6 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
 
-
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -142,7 +141,11 @@ jobs:
           export CCACHE_EXEC=$(command -v ccache)
           export CCACHE_MAXSIZE=5G
           export USE_CCACHE=1
-          export NINJA_ARGS="-j 4"
+
+          # НАСТРОЙКИ ДЛЯ ОБХОДА ЗАВИСАНИЯ (Снижаем нагрузку на RAM и диск)
+          export GOMAXPROCS=2
+          export NINJA_ARGS="-j2"
+          export EXTRA_AK_JAVA_OPTIONS="-Xmx6g"
 
           RELEASE="bp2a"
           LUNCH_TARGET="twrp_${{ inputs.DEVICE_NAME }}-${RELEASE}-eng"
@@ -157,24 +160,38 @@ jobs:
             export TARGET_RELEASE=${RELEASE}
           fi
 
-          echo "=== BUILDING RECOVERY ==="
+          echo "=== STARTING MONITORING ==="
           (while true; do echo `date +%T` "Building TWRP..."; free -h; sleep 10; done) &
           TIP_PID=$!
-          mka recoveryimage -j4 || echo "mka recoveryimage failed with exit code $?"
+
+          echo "=== BUILDING RECOVERY ==="
+          mka recoveryimage -j2
+          RECOVERY_EXIT=$?
 
           echo "=== BUILDING VENDOR_BOOT ==="
-          mka vendorbootimage -j4 || echo "mka vendorbootimage failed with exit code $?"
-          kill $TIP_PID && exit 0
+          mka vendorbootimage -j2
+          VENDOR_EXIT=$?
+
+          # Убиваем мониторинг памяти, но НЕ выходим из скрипта раньше времени!
+          kill $TIP_PID 2>/dev/null
 
           echo "=== CHECKING RESULTS ==="
-          ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot"
+          ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot" || true
 
+          # Проверяем реальный статус сборки образов
+          if [ $VENDOR_EXIT -ne 0 ]; then
+            echo "❌ Сборка vendor_bootimage завершилась фатальной ошибкой!"
+            exit $VENDOR_EXIT
+          fi
+
+          # Переименовываем файл ТОЛЬКО в самом конце скрипта
           if [ -f out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img ]; then
             mv out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
                out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
             echo "✅ Renamed to TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img"
           else
             echo "⚠️ vendor_boot.img not found, skipping rename"
+            exit 1
           fi
 
       - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
