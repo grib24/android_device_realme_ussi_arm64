@@ -21,37 +21,32 @@ TARGET_NO_BOOTLOADER := true
 # Display
 TARGET_SCREEN_DENSITY := 320
 
-# Kernel Specs
+# Kernel Specs (для vendor_boot ядро не нужно)
 BOARD_BOOT_HEADER_VERSION := 4
 BOARD_KERNEL_BASE := 0x00000000
 BOARD_KERNEL_CMDLINE := console=ttyS1,921600n8 bootconfig bootconfig
 BOARD_KERNEL_PAGESIZE := 4096
 
-# ⚠️ Убрано: BOARD_MKBOOTIMG_ARGS += --dtb ...
-# Вместо этого используем BOARD_PREBUILT_DTBIMAGE_DIR
+# Ядро не используется в vendor_boot – отключаем его
+TARGET_NO_KERNEL := true
 
-# Prebuilt DTB (правильный способ для vendor_boot v4)
-TARGET_FORCE_PREBUILT_KERNEL := false
+# Prebuilt DTB (обязательно для header v4)
 TARGET_PREBUILT_DTB := $(DEVICE_PATH)/prebuilts/dtb.img
 BOARD_PREBUILT_DTBIMAGE_DIR := $(DEVICE_PATH)/prebuilts
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
-
-# Обход проверки TWRP: используем DTB как фиктивное ядро
-BOARD_KERNEL_IMAGE_NAME := dtb.img
-TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilts/dtb.img
 
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
 
-# ========== ОСНОВНЫЕ НАСТРОЙКИ (исправлены) ==========
+# ========== ОСНОВНЫЕ НАСТРОЙКИ (правильные для vendor_boot) ==========
 BOARD_USES_VENDOR_BOOT := true
-BOARD_USES_RECOVERY_AS_BOOT := false
+BOARD_USES_RECOVERY_AS_BOOT := true   # recovery внутри vendor_boot
 TARGET_NO_RECOVERY := false
 
-# ✅ НЕ используем BOARD_PREBUILT_VENDOR_RAMDISK – полагаемся на автоматику
-# ✅ Убрана строка TARGET_SUPPORTS_64_BIT_APPS – она не нужна
-# =====================================================
+# НЕ УКАЗЫВАЕМ BOARD_PREBUILT_VENDOR_RAMDISK – система сама возьмёт ramdisk из recovery
+# НЕ УКАЗЫВАЕМ TARGET_PREBUILT_KERNEL и BOARD_KERNEL_IMAGE_NAME – ядро не нужно
+# ======================================================================
 
 # Recovery fstab
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.ums9230_latte
@@ -80,4 +75,4 @@ TW_EXCLUDE_DEFAULT_USB_INIT := true
 PLATFORM_VERSION := 16
 BUILD_BROKEN_MISSING_REQUIRED_MODULES := true
 
-# Удалено: TARGET_SUPPORTS_64_BIT_APPS := false
+# Удалено: TARGET_SUPPORTS_64_BIT_APPS (не нужно)
