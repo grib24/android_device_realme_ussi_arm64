@@ -33,10 +33,9 @@ BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
 # Отключаем сборку boot.img, так как ядро встроенного стока нам не нужно
 TARGET_NO_KERNEL := true
 
-# Prebuilt DTB Image configuration (Обязательно для vendor_boot Header v4)
-TARGET_PREBUILT_DTB := $(DEVICE_PATH)/prebuilts/dtb.img
-BOARD_PREBUILT_DTBIMAGE_DIR := $(DEVICE_PATH)/prebuilts
+# Ручная интеграция стокового DTB для обхода багов Soong в Android 16
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
+BOARD_MKBOOTIMG_ARGS += --dtb $(DEVICE_PATH)/prebuilts/dtb.img
 
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144
