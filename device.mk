@@ -13,3 +13,4 @@ PRODUCT_COPY_FILES += \
 # Soong namespaces
 PRODUCT_SOONG_NAMESPACES += \
     $(LOCAL_PATH)
+PRODUCT_PACKAGES += recovery
