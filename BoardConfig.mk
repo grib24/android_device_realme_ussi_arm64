@@ -64,7 +64,7 @@ PRODUCT_PACKAGES += recovery
 
 # Если у вас есть папка vendor_ramdisk с дополнительными файлами (второй ramdisk),
 # раскомментируйте следующую строку и создайте эту папку в device/latte/
-BOARD_VENDOR_RAMDISK_RECOVERY_IMAGE := $(DEVICE_PATH)/vendor_ramdisk
+# BOARD_VENDOR_RAMDISK_RECOVERY_IMAGE := $(DEVICE_PATH)/vendor_ramdisk
 
 # ============================================================
 
