@@ -41,23 +41,19 @@ BOARD_MKBOOTIMG_ARGS += --dtb $(DEVICE_PATH)/prebuilts/dtb.img
 BOARD_FLASH_BLOCK_SIZE := 262144
 BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 104857600
 
-# ========== СТРУКТУРА РАЗДЕЛОВ ПОД VENDOR_BOOT (Android 16) ==========
-# Включаем использование разделения vendor_boot
+# ========== НАСТРОЙКИ СБОРКИ РАМДИСКА (Фикс пустышки) ==========
 BOARD_USES_VENDOR_BOOT := true
 
-# Сообщаем системе, что классического отдельного recovery.img нет
-TARGET_NO_RECOVERY := true
-
-# Отключаем устаревшую схему встраивания рекавери в обычный boot
+# Отключаем некорректное разделение на фрагменты
+BOARD_RECOVERY_RAMDISK_IN_VENDOR_BOOT := false
 BOARD_USES_RECOVERY_AS_BOOT := false
 
-# Заставляем TWRP собираться прямо в рамдиск раздела vendor_boot
-# На выходе автоматика создаст рабочий vendor_boot.img
-BOARD_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
+# Разрешаем сборку рекавери-структур
+TARGET_NO_RECOVERY := false
 
-# Разрешаем копирование конфигурационных скриптов в рамдиск вендора
-BOARD_COPY_RC_TO_VENDOR_BOOT := true
-# ======================================================================
+# Принудительно скармливаем готовый рамдиск TWRP утилите mkbootimg в качестве основного
+BOARD_PREBUILT_VENDOR_RAMDISK := $(PRODUCT_OUT)/ramdisk-recovery.cpio
+# ===============================================================
 
 # Recovery fstab (Автоматика сама разложит его по нужным каталогам)
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.ums9230_latte
