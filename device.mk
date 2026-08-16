@@ -4,13 +4,10 @@
 # Inherit from TWRP base configuration
 $(call inherit-product, vendor/twrp/config/common.mk)
 
-# Device specific configuration
-PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/rootdir/etc/fstab.ums9230_latte:$(TARGET_VENDOR_RAMDISK_OUT)/first_stage_ramdisk/fstab.ums9230_latte \
-    $(LOCAL_PATH)/rootdir/system/etc/recovery.fstab:$(TARGET_OUT)/etc/recovery.fstab \
-    $(LOCAL_PATH)/rootdir/system/etc/recovery.tmpfsdata.fstab:$(TARGET_OUT)/etc/recovery.tmpfsdata.fstab
+# Блок PRODUCT_COPY_FILES оставляем пустым.
+# В Android 16 автоматика сама возьмет fstab из BoardConfig.mk (через TARGET_RECOVERY_FSTAB)
+PRODUCT_COPY_FILES +=
 
-# Soong namespaces
+# Soong namespaces для поиска ваших HAL-модулей устройства
 PRODUCT_SOONG_NAMESPACES += \
     $(LOCAL_PATH)
-PRODUCT_PACKAGES += recovery
