@@ -41,11 +41,12 @@ jobs:
     permissions:
       contents: write
 
+    # ======= БЕЗОПАСНАЯ ДАТА (без двоеточий) =======
     env:
-      BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+      BUILD_DATE: ${{ github.event.repository.updated_at }}
+    # =================================================
 
     steps:
-      # ======= НОВЫЙ ШАГ ОЧИСТКИ (ВСТАВЛЕН В САМОЕ НАЧАЛО) =======
       - name: Cleanup and Maximize Build Space
         uses: easimon/maximize-build-space@master
         with:
@@ -54,7 +55,6 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           overprovision-lvm: 'true'
-      # ==========================================================
 
       - name: Show build info
         run: |
@@ -133,7 +133,7 @@ jobs:
           git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
           rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
 
-      # ======= ИСПРАВЛЕННЫЙ ШАГ СБОРКИ (без ограничений, -j4) =======
+      # ======= ИСПРАВЛЕННЫЙ ШАГ СБОРКИ (cp вместо mv) =======
       - name: Build TWRP
         run: |
           cd workspace
@@ -180,15 +180,16 @@ jobs:
             exit $VENDOR_EXIT
           fi
 
+          # ======= КОПИРУЕМ, А НЕ ПЕРЕМЕЩАЕМ =======
           if [ -f out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img ]; then
-            mv out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
+            cp out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
                out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-$BUILD_DATE.img
-            echo "✅ Renamed to TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-$BUILD_DATE.img"
+            echo "✅ Copied to TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-$BUILD_DATE.img (original preserved)"
           else
-            echo "⚠️ vendor_boot.img not found, skipping rename"
+            echo "⚠️ vendor_boot.img not found, skipping copy"
             exit 1
           fi
-      # =============================================================
+      # ===============================================
 
       - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
         run: |
