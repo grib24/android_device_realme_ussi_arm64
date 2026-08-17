@@ -41,10 +41,8 @@ jobs:
     permissions:
       contents: write
 
-    # ======= БЕЗОПАСНАЯ ДАТА (без двоеточий) =======
     env:
       BUILD_DATE: ${{ github.event.repository.updated_at }}
-    # =================================================
 
     steps:
       - name: Cleanup and Maximize Build Space
@@ -133,7 +131,7 @@ jobs:
           git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
           rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
 
-      # ======= ИСПРАВЛЕННЫЙ ШАГ СБОРКИ (cp вместо mv) =======
+      # ======= НОВЫЙ ШАГ СБОРКИ (строго по вашему тексту) =======
       - name: Build TWRP
         run: |
           cd workspace
@@ -144,52 +142,27 @@ jobs:
           export CCACHE_EXEC=$(command -v ccache)
           export CCACHE_MAXSIZE=5G
           export USE_CCACHE=1
-
+          # ЖЕСТКОЕ ОГРАНИЧЕНИЕ ДЛЯ ЗАЩИТЫ БЕСПЛАТНОГО СЕРВЕРА
+          export GOMAXPROCS=1
+          export SOONG_DELAVAN_NUM_CORES=1
+          export NINJA_ARGS="-j1"
           RELEASE="bp2a"
-          LUNCH_TARGET="twrp_${{ inputs.DEVICE_NAME }}-${RELEASE}-eng"
-
+          LUNCH_TARGET="twrp_latte-${RELEASE}-eng"
           echo "Trying lunch: $LUNCH_TARGET"
           if lunch $LUNCH_TARGET 2>/dev/null; then
             echo "✅ Lunch succeeded"
           else
-            echo "Lunch failed, using direct make with TARGET_RELEASE..."
-            export TARGET_PRODUCT=twrp_${{ inputs.DEVICE_NAME }}
-            export TARGET_DEVICE=${{ inputs.DEVICE_NAME }}
+            export TARGET_PRODUCT=twrp_latte
+            export TARGET_DEVICE=latte
             export TARGET_RELEASE=${RELEASE}
           fi
-
           echo "=== STARTING MONITORING ==="
-          (while true; do echo `date +%T` "Building TWRP..."; free -h; sleep 10; done) &
+          (while true; do echo date +%T "Building TWRP..."; free -h; sleep 10; done) &
           TIP_PID=$!
-
-          echo "=== BUILDING RECOVERY ==="
-          mka recoveryimage -j4
-          RECOVERY_EXIT=$?
-
           echo "=== BUILDING VENDOR_BOOT ==="
-          mka vendorbootimage -j4
-          VENDOR_EXIT=$?
-
-          kill $TIP_PID 2>/dev/null || true
-
-          echo "=== CHECKING RESULTS ==="
-          ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot" || true
-
-          if [ $VENDOR_EXIT -ne 0 ]; then
-            echo "❌ Сборка vendor_bootimage завершилась фатальной ошибкой!"
-            exit $VENDOR_EXIT
-          fi
-
-          # ======= КОПИРУЕМ, А НЕ ПЕРЕМЕЩАЕМ =======
-          if [ -f out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img ]; then
-            cp out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
-               out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-$BUILD_DATE.img
-            echo "✅ Copied to TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-$BUILD_DATE.img (original preserved)"
-          else
-            echo "⚠️ vendor_boot.img not found, skipping copy"
-            exit 1
-          fi
-      # ===============================================
+          mka vendorbootimage -j1
+          kill $TIP_PID 2>/dev/null
+      # =============================================================
 
       - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
         run: |
