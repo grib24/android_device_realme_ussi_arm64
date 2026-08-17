@@ -1,0 +1,317 @@
+name: TWRP 16 Builder (latte)
+
+on:
+  workflow_dispatch:
+    inputs:
+      DEVICE_TREE_URL:
+        description: Device Tree URL
+        required: true
+        default: https://github.com/grib24/android_device_realme_ussi_arm64
+      DEVICE_TREE_BRANCH:
+        description: Device Tree Branch
+        required: true
+        default: main
+      DEVICE_PATH:
+        description: Path the device tree should be synced to, relative to source root
+        required: true
+        default: device/latte
+      DEVICE_NAME:
+        description: Device Name from tree
+        required: true
+        default: latte
+      BUILD_TARGET:
+        type: choice
+        description: Partition containing recovery ramdisk
+        options:
+          - boot
+          - recovery
+          - vendor_boot
+        required: true
+        default: vendor_boot
+      SHOULD_RELEASE:
+        description: Create a release
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 300
+    permissions:
+      contents: write
+
+    env:
+      BUILD_DATE: ${{ github.event.repository.updated_at }}
+
+    steps:
+      - name: Cleanup and Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 16384
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          overprovision-lvm: 'true'
+
+      - name: Show build info
+        run: |
+          echo "BUILD_TIME=$(date +%H%M)" >> "$GITHUB_ENV"
+          {
+            echo 'BUILD_INFO<<EOF'
+            echo "Device Tree URL: ${{ inputs.DEVICE_TREE_URL }}"
+            echo "Device Tree Branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
+            echo "Device Path: ${{ inputs.DEVICE_PATH }}"
+            echo "Device Name: ${{ inputs.DEVICE_NAME }}"
+            echo "Build Target: ${{ inputs.BUILD_TARGET }}.img"
+            echo "Build Date: $(date)"
+            echo "Run ID: ${{ github.run_id }}"
+            echo EOF
+          } >> "$GITHUB_ENV"
+
+      - name: Check Out
+        uses: actions/checkout@v4
+
+      - name: Remove root Android.bp before repo sync
+        run: rm -f Android.bp
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          create-symlink: true
+
+      - name: Setup zram (increase swap)
+        run: |
+          sudo apt update
+          sudo apt install -y linux-modules-extra-$(uname -r) zram-tools
+          sudo modprobe zram
+          sudo sed -i 's/^#PERCENT=50/PERCENT=90/' /etc/default/zramswap
+          sudo sed -i 's/^#PRIORITY=100/PRIORITY=1000/' /etc/default/zramswap
+          sudo systemctl restart zramswap
+          zramctl
+
+      - name: Prepare environment
+        run: |
+          sudo apt -y install gperf gcc-multilib g++-multilib libc6-dev \
+            lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev \
+            libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev \
+            lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev \
+            libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev \
+            lzma ncftp qemu-user-static libtinfo5 python-is-python3
+          sudo add-apt-repository universe
+          sudo apt -y install libncurses5
+          sudo ln -sf /usr/bin/python3 /usr/bin/python
+
+      - name: Install repo
+        run: |
+          mkdir ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          sudo ln -sf ~/bin/repo /usr/bin/repo
+
+      - name: Initialize repo (TWRP 16.0 with shallow clone)
+        run: |
+          mkdir -p workspace
+          cd workspace
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
+          repo init --depth=1 -u https://github.com/TWRP-Test/platform_manifest_twrp_aosp.git -b twrp-16.0
+
+      - name: Repo Sync
+        run: |
+          cd workspace
+          (while true; do echo "Syncing source..."; sleep 60; done) &
+          TIP_PID=$!
+          repo sync -j$(nproc --all) --force-sync --no-clone-bundle
+          kill $TIP_PID && exit 0
+
+      - name: Clone device tree
+        run: |
+          cd workspace
+          git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
+          rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
+
+      # ======= НОВЫЙ ШАГ СБОРКИ (строго по вашему тексту) =======
+      - name: Build TWRP
+        run: |
+          cd workspace
+          source build/envsetup.sh
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export PLATFORM_VERSION=16
+          export CCACHE_DIR=.ccache
+          export CCACHE_EXEC=$(command -v ccache)
+          export CCACHE_MAXSIZE=5G
+          export USE_CCACHE=1
+          # ЖЕСТКОЕ ОГРАНИЧЕНИЕ ДЛЯ ЗАЩИТЫ БЕСПЛАТНОГО СЕРВЕРА
+          export GOMAXPROCS=1
+          export SOONG_DELAVAN_NUM_CORES=1
+          export NINJA_ARGS="-j1"
+          RELEASE="bp2a"
+          LUNCH_TARGET="twrp_latte-${RELEASE}-eng"
+          echo "Trying lunch: $LUNCH_TARGET"
+          if lunch $LUNCH_TARGET 2>/dev/null; then
+            echo "✅ Lunch succeeded"
+          else
+            export TARGET_PRODUCT=twrp_latte
+            export TARGET_DEVICE=latte
+            export TARGET_RELEASE=${RELEASE}
+          fi
+          echo "=== STARTING MONITORING ==="
+          (while true; do echo date +%T "Building TWRP..."; free -h; sleep 10; done) &
+          TIP_PID=$!
+          echo "=== BUILDING VENDOR_BOOT ==="
+          mka vendorbootimage -j1
+          kill $TIP_PID 2>/dev/null
+      # =============================================================
+
+      - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
+        run: |
+          echo "==============================================="
+          echo "     ГЛУБОКАЯ ДИАГНОСТИКА VENDOR_BOOT"
+          echo "==============================================="
+          echo ""
+
+          OUT_DIR="workspace/out/target/product/latte"
+          echo "📁 Проверяем папку: $OUT_DIR"
+          ls -la $OUT_DIR | grep -E "recovery|vendor_boot|ramdisk"
+          echo ""
+
+          # 1. Проверка recovery.img
+          echo "🔎 [1] Проверка recovery.img"
+          if [ -f "$OUT_DIR/recovery.img" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/recovery.img")
+            echo "   ✅ recovery.img найден (размер: $SIZE байт)"
+            if [ $SIZE -lt 1024 ]; then
+              echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: recovery.img слишком мал (<1KB) — собран пустой образ!"
+            fi
+          else
+            echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: recovery.img ОТСУТСТВУЕТ!"
+            echo "   ➡️ Причина: TARGET_NO_RECOVERY или BOARD_USES_RECOVERY_AS_BOOT настроены неверно."
+          fi
+          echo ""
+
+          # 2. Проверка vendor_boot.img (размер)
+          echo "🔎 [2] Проверка vendor_boot.img"
+          if [ -f "$OUT_DIR/vendor_boot.img" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/vendor_boot.img")
+            MAX_SIZE=104857600
+            echo "   ✅ vendor_boot.img найден (размер: $SIZE байт)"
+            if [ $SIZE -eq $MAX_SIZE ]; then
+              echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: размер равен максимальному ($MAX_SIZE) — это ПУСТАЯ ЗАГЛУШКА!"
+              echo "   ➡️ Причина: в vendor_boot не упакован ramdisk (не создан recovery.img или не указан BOARD_PREBUILT_VENDOR_RAMDISK)."
+            elif [ $SIZE -lt 10485760 ]; then
+              echo "   ⚠️ ПРЕДУПРЕЖДЕНИЕ: размер меньше 10MB — возможно, внутри только DTB, без ramdisk."
+            else
+              echo "   ✅ Размер нормальный (вероятно, ramdisk присутствует)"
+            fi
+          else
+            echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: vendor_boot.img ОТСУТСТВУЕТ!"
+          fi
+          echo ""
+
+          # 3. Проверка промежуточного ramdisk (ramdisk-recovery.cpio)
+          echo "🔎 [3] Проверка промежуточного ramdisk"
+          if [ -f "$OUT_DIR/ramdisk-recovery.cpio" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/ramdisk-recovery.cpio")
+            echo "   ✅ ramdisk-recovery.cpio найден (размер: $SIZE байт)"
+            if [ $SIZE -lt 1024 ]; then
+              echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: ramdisk слишком мал (<1KB) — TWRP не собран!"
+            fi
+          elif [ -f "$OUT_DIR/obj/PACKAGING/recovery_intermediates/ramdisk.cpio" ]; then
+            SIZE=$(stat -c%s "$OUT_DIR/obj/PACKAGING/recovery_intermediates/ramdisk.cpio")
+            echo "   ⚠️ ramdisk-recovery.cpio отсутствует в корне, но найден в obj/ (размер: $SIZE)"
+            echo "   ➡️ Возможно, он не скопирован в корень — проверь PRODUCT_COPY_FILES."
+          else
+            echo "   ❌ КРИТИЧЕСКАЯ ОШИБКА: ramdisk-recovery.cpio НЕ НАЙДЕН!"
+            echo "   ➡️ TWRP не собрался (проверь vendor/twrp/config/common.mk и lunch target)."
+          fi
+          echo ""
+
+          # 4. Распаковка vendor_boot.img (если он есть)
+          if [ -f "$OUT_DIR/vendor_boot.img" ]; then
+            echo "🔎 [4] Распаковка vendor_boot.img для анализа структуры"
+            mkdir -p workspace/out_analysis
+            python3 workspace/system/tools/mkbootimg/unpack_bootimg.py --boot_img "$OUT_DIR/vendor_boot.img" --out workspace/out_analysis 2>&1 || echo "   ⚠️ unpack_bootimg.py завершился с ошибкой (возможно, скрипт отсутствует)."
+
+            echo "   📂 Содержимое out_analysis:"
+            ls -la workspace/out_analysis/
+
+            if [ -f "workspace/out_analysis/vendor_ramdisk00" ]; then
+              SIZE=$(stat -c%s "workspace/out_analysis/vendor_ramdisk00")
+              echo "   ✅ vendor_ramdisk00 найден (размер: $SIZE байт)"
+              file workspace/out_analysis/vendor_ramdisk00
+              if cpio -t < workspace/out_analysis/vendor_ramdisk00 2>&1 | grep -q "sbin/recovery"; then
+                echo "   ✅ Внутри ramdisk найден 'sbin/recovery' — TWRP присутствует!"
+              else
+                echo "   ❌ ВНИМАНИЕ: внутри ramdisk НЕТ 'sbin/recovery' — это не TWRP!"
+                echo "   ➡️ Возможно, в recovery.img попал не тот ramdisk."
+              fi
+            else
+              echo "   ❌ vendor_ramdisk00 ОТСУТСТВУЕТ — в vendor_boot нет ramdisk!"
+              echo "   ➡️ Проверь BOARD_PREBUILT_VENDOR_RAMDISK и путь к recovery.img."
+            fi
+
+            if [ -f "workspace/out_analysis/dtb" ]; then
+              echo "   ✅ DTB найден (размер: $(stat -c%s workspace/out_analysis/dtb) байт)"
+            else
+              echo "   ⚠️ DTB не найден — возможно, vendor_boot без DTB (но для header v4 он обязателен)."
+            fi
+          fi
+          echo ""
+
+          # 5. Проверка fstab внутри vendor_ramdisk (если удалось распаковать)
+          if [ -f "workspace/out_analysis/vendor_ramdisk00" ]; then
+            echo "🔎 [5] Проверка наличия fstab внутри ramdisk"
+            mkdir -p workspace/out_analysis/ramdisk_contents
+            cpio -id -D workspace/out_analysis/ramdisk_contents < workspace/out_analysis/vendor_ramdisk00 2>&1 >/dev/null
+
+            if [ -f "workspace/out_analysis/ramdisk_contents/etc/recovery.fstab" ]; then
+              echo "   ✅ recovery.fstab найден в /etc/"
+              echo "   ➡️ Первые 5 строк:"
+              head -5 workspace/out_analysis/ramdisk_contents/etc/recovery.fstab
+            elif [ -f "workspace/out_analysis/ramdisk_contents/system/etc/recovery.fstab" ]; then
+              echo "   ✅ recovery.fstab найден в /system/etc/"
+              echo "   ➡️ Первые 5 строк:"
+              head -5 workspace/out_analysis/ramdisk_contents/system/etc/recovery.fstab
+            elif [ -f "workspace/out_analysis/ramdisk_contents/fstab.ums9230_latte" ]; then
+              echo "   ✅ fstab.ums9230_latte найден в корне (загрузчик)"
+            else
+              echo "   ❌ recovery.fstab НЕ НАЙДЕН внутри ramdisk!"
+              echo "   ➡️ TWRP не сможет монтировать разделы. Проверь PRODUCT_COPY_FILES."
+            fi
+          fi
+          echo ""
+
+          echo "==============================================="
+          echo "     ДИАГНОСТИКА ЗАВЕРШЕНА"
+          echo "==============================================="
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}
+          path: |
+            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
+            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img
+            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/recovery.img
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload to Release
+        if: ${{ inputs.SHOULD_RELEASE == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
+            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img
+            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/recovery.img
+          name: TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}-${{ github.run_id }}
+          tag_name: ${{ env.BUILD_DATE }}-${{ github.run_id }}
+          body: |
+            Device: ${{ inputs.DEVICE_NAME }}
+            Build Target: ${{ inputs.BUILD_TARGET }}.img
+            Build Date: ${{ env.BUILD_DATE }}
+            Run ID: ${{ github.run_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
