@@ -41,12 +41,21 @@ jobs:
     permissions:
       contents: write
 
-    # ======= ГЛОБАЛЬНАЯ ДАТА =======
     env:
-      BUILD_DATE: ${{ github.event.repository.updated_at }}
-    # ================================
+      BUILD_DATE: ${{ github.event.head_commit.timestamp }}
 
     steps:
+      # ======= НОВЫЙ ШАГ ОЧИСТКИ (ВСТАВЛЕН В САМОЕ НАЧАЛО) =======
+      - name: Cleanup and Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 16384
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          overprovision-lvm: 'true'
+      # ==========================================================
+
       - name: Show build info
         run: |
           echo "BUILD_TIME=$(date +%H%M)" >> "$GITHUB_ENV"
@@ -67,17 +76,6 @@ jobs:
 
       - name: Remove root Android.bp before repo sync
         run: rm -f Android.bp
-
-      - name: Cleanup
-        uses: rokibhasansagar/slimhub_actions@main
-
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@master
-        with:
-          swap-size-mb: 12288
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -135,10 +133,8 @@ jobs:
           git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
           rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
 
-      # ================================================================
-      # УЛЬТРА-ЛЁГКОВЕСНЫЙ ОДНОПОТОЧНЫЙ ШАГ СБОРКИ
-      # ================================================================
-      - name: Build TWRP (limited parallelism)
+      # ======= ИСПРАВЛЕННЫЙ ШАГ СБОРКИ (без ограничений, -j4) =======
+      - name: Build TWRP
         run: |
           cd workspace
           source build/envsetup.sh
@@ -148,10 +144,6 @@ jobs:
           export CCACHE_EXEC=$(command -v ccache)
           export CCACHE_MAXSIZE=5G
           export USE_CCACHE=1
-
-          # УСТАНОВКА GOMAXPROCS=1, NINJA_ARGS="-j1" ДЛЯ ЗАЩИТЫ ДИСКА
-          export GOMAXPROCS=1
-          export NINJA_ARGS="-j1"
 
           RELEASE="bp2a"
           LUNCH_TARGET="twrp_${{ inputs.DEVICE_NAME }}-${RELEASE}-eng"
@@ -171,26 +163,23 @@ jobs:
           TIP_PID=$!
 
           echo "=== BUILDING RECOVERY ==="
-          mka recoveryimage -j1
+          mka recoveryimage -j4
           RECOVERY_EXIT=$?
 
           echo "=== BUILDING VENDOR_BOOT ==="
-          mka vendorbootimage -j1
+          mka vendorbootimage -j4
           VENDOR_EXIT=$?
 
-          # Убиваем мониторинг памяти
           kill $TIP_PID 2>/dev/null || true
 
           echo "=== CHECKING RESULTS ==="
           ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot" || true
 
-          # Проверяем реальный статус сборки образов
           if [ $VENDOR_EXIT -ne 0 ]; then
             echo "❌ Сборка vendor_bootimage завершилась фатальной ошибкой!"
             exit $VENDOR_EXIT
           fi
 
-          # Переименовываем файл используя глобальную переменную $BUILD_DATE
           if [ -f out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img ]; then
             mv out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img \
                out/target/product/${{ inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ inputs.DEVICE_NAME }}-$BUILD_DATE.img
@@ -199,7 +188,7 @@ jobs:
             echo "⚠️ vendor_boot.img not found, skipping rename"
             exit 1
           fi
-      # ================================================================
+      # =============================================================
 
       - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
         run: |
