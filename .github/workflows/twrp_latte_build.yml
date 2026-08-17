@@ -131,6 +131,9 @@ jobs:
           git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
           rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
 
+      # ================================================================
+      # УЛЬТРА-ЛЁГКОВЕСНЫЙ ОДНОПОТОЧНЫЙ ШАГ СБОРКИ
+      # ================================================================
       - name: Build TWRP (limited parallelism)
         run: |
           cd workspace
@@ -142,10 +145,9 @@ jobs:
           export CCACHE_MAXSIZE=5G
           export USE_CCACHE=1
 
-          # НАСТРОЙКИ ДЛЯ ОБХОДА ЗАВИСАНИЯ (Снижаем нагрузку на RAM и диск)
-          export GOMAXPROCS=2
-          export NINJA_ARGS="-j2"
-          export EXTRA_AK_JAVA_OPTIONS="-Xmx6g"
+          # УСТАНОВКА GOMAXPROCS=1, NINJA_ARGS="-j1" ДЛЯ ЗАЩИТЫ ДИСКА
+          export GOMAXPROCS=1
+          export NINJA_ARGS="-j1"
 
           RELEASE="bp2a"
           LUNCH_TARGET="twrp_${{ inputs.DEVICE_NAME }}-${RELEASE}-eng"
@@ -165,15 +167,15 @@ jobs:
           TIP_PID=$!
 
           echo "=== BUILDING RECOVERY ==="
-          mka recoveryimage -j2
+          mka recoveryimage -j1
           RECOVERY_EXIT=$?
 
           echo "=== BUILDING VENDOR_BOOT ==="
-          mka vendorbootimage -j2
+          mka vendorbootimage -j1
           VENDOR_EXIT=$?
 
           # Убиваем мониторинг памяти, но НЕ выходим из скрипта раньше времени!
-          kill $TIP_PID 2>/dev/null
+          kill $TIP_PID 2>/dev/null || true
 
           echo "=== CHECKING RESULTS ==="
           ls -la out/target/product/${{ inputs.DEVICE_NAME }}/ | grep -E "recovery|vendor_boot" || true
@@ -193,6 +195,7 @@ jobs:
             echo "⚠️ vendor_boot.img not found, skipping rename"
             exit 1
           fi
+      # ================================================================
 
       - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
         run: |
