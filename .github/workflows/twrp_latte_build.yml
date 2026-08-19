@@ -108,48 +108,6 @@ jobs:
           # Используем твои собственные инпуты DEVICE_TREE_URL, DEVICE_TREE_BRANCH и DEVICE_PATH
            git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
 
-
-      - name: Prepare environment
-        run: |
-          sudo apt -y install gperf gcc-multilib g++-multilib libc6-dev \
-            lib32ncurses5-dev x11proto-core-dev libx11-dev tree lib32z-dev \
-            libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev \
-            lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libwxgtk3.0-gtk3-dev \
-            libxml2 lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev \
-            lzma ncftp qemu-user-static libtinfo5 python-is-python3
-          sudo add-apt-repository universe
-          sudo apt -y install libncurses5
-          sudo ln -sf /usr/bin/python3 /usr/bin/python
-
-      - name: Install repo
-        run: |
-          mkdir ~/bin
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-          chmod a+x ~/bin/repo
-          sudo ln -sf ~/bin/repo /usr/bin/repo
-
-      - name: Initialize repo (TWRP 16.0 with shallow clone)
-        run: |
-          mkdir -p workspace
-          cd workspace
-          git config --global user.name "${GITHUB_ACTOR}"
-          git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
-          repo init --depth=1 -u https://github.com/TWRP-Test/platform_manifest_twrp_aosp.git -b twrp-16.0
-
-      - name: Repo Sync
-        run: |
-          cd workspace
-          (while true; do echo "Syncing source..."; sleep 60; done) &
-          TIP_PID=$!
-          repo sync -j$(nproc --all) --force-sync --no-clone-bundle
-          kill $TIP_PID && exit 0
-
-      - name: Clone device tree
-        run: |
-          cd workspace
-          git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
-          # rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
-
       # ======= ЗАМЕНЁННЫЙ ШАГ СБОРКИ (с m vendor_bootimage) =======
       - name: Build TWRP (limited parallelism)
         run: |
