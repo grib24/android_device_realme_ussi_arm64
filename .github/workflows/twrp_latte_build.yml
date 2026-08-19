@@ -92,7 +92,7 @@ jobs:
       - name: Sync source
         run: |
           # Используем жесткую ссылку на манифест TWRP 16, как в твоем прошлом рабочем файле
-          repo init -u https://github.com -b twrp-16.0 --depth=1
+          repo init --depth=1 -u https://github.com/TWRP-Test/platform_manifest_twrp_aosp.git -b twrp-16.0
           
           (while true; do echo "Syncing source..."; sleep 60; done) &
           TIP_PID=$!
