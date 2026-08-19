@@ -126,7 +126,7 @@ jobs:
         run: |
           cd workspace
           git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
-          rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
+          # rm -f ${{ inputs.DEVICE_PATH }}/Android.bp
 
       # ======= ЗАМЕНЁННЫЙ ШАГ СБОРКИ (с m vendor_bootimage) =======
       - name: Build TWRP (limited parallelism)
@@ -158,7 +158,7 @@ jobs:
 
           echo "=== BUILDING VENDOR_BOOT ==="
           # ИСПОЛЬЗУЕМ КЛЮЧЕВОЙ КЛЮЧ "m" С ФЛАГОМ ЦЕЛИ ВМЕСТО MKA
-          m vendor_bootimage -j2
+          m vendor_bootimage
 
           kill $TIP_PID 2>/dev/null
       # =============================================================
