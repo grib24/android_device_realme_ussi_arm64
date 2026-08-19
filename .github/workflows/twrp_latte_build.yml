@@ -1,4 +1,4 @@
-name: TWRP 16 Builder (latte)
+name: TWRP 16 latte
 
 on:
   workflow_dispatch:
