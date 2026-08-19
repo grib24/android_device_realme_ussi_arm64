@@ -111,7 +111,6 @@ jobs:
       # ======= ЗАМЕНЁННЫЙ ШАГ СБОРКИ (с m vendor_bootimage) =======
       - name: Build TWRP (limited parallelism)
         run: |
-          cd workspace
           source build/envsetup.sh
           export ALLOW_MISSING_DEPENDENCIES=true
           export PLATFORM_VERSION=16
