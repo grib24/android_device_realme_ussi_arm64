@@ -91,24 +91,17 @@ jobs:
 
       - name: Sync source
         run: |
-          # Используем жесткую ссылку на манифест TWRP 16, как в твоем прошлом рабочем файле
           repo init --depth=1 -u https://github.com/TWRP-Test/platform_manifest_twrp_aosp.git -b twrp-16.0
-          
           (while true; do echo "Syncing source..."; sleep 60; done) &
           TIP_PID=$!
-          
-          # Запускаем синхронизацию на полной скорости процессора
           repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-          
-          # Убиваем таймер без команды exit 0, чтобы билд не обрывался досрочно
           kill $TIP_PID 2>/dev/null
 
       - name: Setup device
         run: |
-          # Используем твои собственные инпуты DEVICE_TREE_URL, DEVICE_TREE_BRANCH и DEVICE_PATH
-           git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
+          git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
 
-      # ======= ЗАМЕНЁННЫЙ ШАГ СБОРКИ (с m vendor_bootimage) =======
+      # ======= ШАГ СБОРКИ =======
       - name: Build TWRP (limited parallelism)
         run: |
           source build/envsetup.sh
@@ -136,12 +129,12 @@ jobs:
           TIP_PID=$!
 
           echo "=== BUILDING VENDOR_BOOT ==="
-          # ИСПОЛЬЗУЕМ КЛЮЧЕВОЙ КЛЮЧ "m" С ФЛАГОМ ЦЕЛИ ВМЕСТО MKA
           m vendor_bootimage
 
           kill $TIP_PID 2>/dev/null
-      # =============================================================
+      # =================================
 
+      # ======= ДИАГНОСТИКА (исправлены пути без workspace/) =======
       - name: 🔥 ГЛУБОКАЯ ДИАГНОСТИКА (поиск скрытых ошибок)
         run: |
           echo "==============================================="
@@ -149,7 +142,7 @@ jobs:
           echo "==============================================="
           echo ""
 
-          OUT_DIR="workspace/out/target/product/latte"
+          OUT_DIR="out/target/product/latte"
           echo "📁 Проверяем папку: $OUT_DIR"
           ls -la $OUT_DIR | grep -E "recovery|vendor_boot|ramdisk"
           echo ""
@@ -208,17 +201,17 @@ jobs:
           # 4. Распаковка vendor_boot.img (если он есть)
           if [ -f "$OUT_DIR/vendor_boot.img" ]; then
             echo "🔎 [4] Распаковка vendor_boot.img для анализа структуры"
-            mkdir -p workspace/out_analysis
-            python3 workspace/system/tools/mkbootimg/unpack_bootimg.py --boot_img "$OUT_DIR/vendor_boot.img" --out workspace/out_analysis 2>&1 || echo "   ⚠️ unpack_bootimg.py завершился с ошибкой (возможно, скрипт отсутствует)."
+            mkdir -p out_analysis
+            python3 system/tools/mkbootimg/unpack_bootimg.py --boot_img "$OUT_DIR/vendor_boot.img" --out out_analysis 2>&1 || echo "   ⚠️ unpack_bootimg.py завершился с ошибкой (возможно, скрипт отсутствует)."
 
             echo "   📂 Содержимое out_analysis:"
-            ls -la workspace/out_analysis/
+            ls -la out_analysis/
 
-            if [ -f "workspace/out_analysis/vendor_ramdisk00" ]; then
-              SIZE=$(stat -c%s "workspace/out_analysis/vendor_ramdisk00")
+            if [ -f "out_analysis/vendor_ramdisk00" ]; then
+              SIZE=$(stat -c%s "out_analysis/vendor_ramdisk00")
               echo "   ✅ vendor_ramdisk00 найден (размер: $SIZE байт)"
-              file workspace/out_analysis/vendor_ramdisk00
-              if cpio -t < workspace/out_analysis/vendor_ramdisk00 2>&1 | grep -q "sbin/recovery"; then
+              file out_analysis/vendor_ramdisk00
+              if cpio -t < out_analysis/vendor_ramdisk00 2>&1 | grep -q "sbin/recovery"; then
                 echo "   ✅ Внутри ramdisk найден 'sbin/recovery' — TWRP присутствует!"
               else
                 echo "   ❌ ВНИМАНИЕ: внутри ramdisk НЕТ 'sbin/recovery' — это не TWRP!"
@@ -229,8 +222,8 @@ jobs:
               echo "   ➡️ Проверь BOARD_PREBUILT_VENDOR_RAMDISK и путь к recovery.img."
             fi
 
-            if [ -f "workspace/out_analysis/dtb" ]; then
-              echo "   ✅ DTB найден (размер: $(stat -c%s workspace/out_analysis/dtb) байт)"
+            if [ -f "out_analysis/dtb" ]; then
+              echo "   ✅ DTB найден (размер: $(stat -c%s out_analysis/dtb) байт)"
             else
               echo "   ⚠️ DTB не найден — возможно, vendor_boot без DTB (но для header v4 он обязателен)."
             fi
@@ -238,20 +231,20 @@ jobs:
           echo ""
 
           # 5. Проверка fstab внутри vendor_ramdisk (если удалось распаковать)
-          if [ -f "workspace/out_analysis/vendor_ramdisk00" ]; then
+          if [ -f "out_analysis/vendor_ramdisk00" ]; then
             echo "🔎 [5] Проверка наличия fstab внутри ramdisk"
-            mkdir -p workspace/out_analysis/ramdisk_contents
-            cpio -id -D workspace/out_analysis/ramdisk_contents < workspace/out_analysis/vendor_ramdisk00 2>&1 >/dev/null
+            mkdir -p out_analysis/ramdisk_contents
+            cpio -id -D out_analysis/ramdisk_contents < out_analysis/vendor_ramdisk00 2>&1 >/dev/null
 
-            if [ -f "workspace/out_analysis/ramdisk_contents/etc/recovery.fstab" ]; then
+            if [ -f "out_analysis/ramdisk_contents/etc/recovery.fstab" ]; then
               echo "   ✅ recovery.fstab найден в /etc/"
               echo "   ➡️ Первые 5 строк:"
-              head -5 workspace/out_analysis/ramdisk_contents/etc/recovery.fstab
-            elif [ -f "workspace/out_analysis/ramdisk_contents/system/etc/recovery.fstab" ]; then
+              head -5 out_analysis/ramdisk_contents/etc/recovery.fstab
+            elif [ -f "out_analysis/ramdisk_contents/system/etc/recovery.fstab" ]; then
               echo "   ✅ recovery.fstab найден в /system/etc/"
               echo "   ➡️ Первые 5 строк:"
-              head -5 workspace/out_analysis/ramdisk_contents/system/etc/recovery.fstab
-            elif [ -f "workspace/out_analysis/ramdisk_contents/fstab.ums9230_latte" ]; then
+              head -5 out_analysis/ramdisk_contents/system/etc/recovery.fstab
+            elif [ -f "out_analysis/ramdisk_contents/fstab.ums9230_latte" ]; then
               echo "   ✅ fstab.ums9230_latte найден в корне (загрузчик)"
             else
               echo "   ❌ recovery.fstab НЕ НАЙДЕН внутри ramdisk!"
@@ -263,13 +256,14 @@ jobs:
           echo "==============================================="
           echo "     ДИАГНОСТИКА ЗАВЕРШЕНА"
           echo "==============================================="
+      # =============================================================
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TWRP-16-${{ inputs.DEVICE_NAME }}-vendor_boot
           path: |
-            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img
+            out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img
           retention-days: 30
           if-no-files-found: warn
 
@@ -278,7 +272,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            workspace/out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img
+            out/target/product/${{ inputs.DEVICE_NAME }}/vendor_boot.img
           name: TWRP-16-${{ inputs.DEVICE_NAME }}-${{ github.run_id }}
           tag_name: v16-${{ github.run_id }}
           body: |
