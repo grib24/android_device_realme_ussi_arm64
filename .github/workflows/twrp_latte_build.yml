@@ -57,6 +57,10 @@ jobs:
             echo EOF
           } >> "$GITHUB_ENV"
 
+      - name: Fix Ubuntu Azure Mirrors
+        run: |
+          sudo sed -i 's/azure\.archive\.ubuntu\.com/://ubuntu.com' /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true
+
       - name: Cleanup
         uses: rokibhasansagar/slimhub_actions@main
 
