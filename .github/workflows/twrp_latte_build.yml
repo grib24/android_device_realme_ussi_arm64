@@ -123,6 +123,21 @@ jobs:
         run: |
           git clone ${{ inputs.DEVICE_TREE_URL }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ${{ inputs.DEVICE_PATH }}
 
+      - name: Generate build info
+        run: |
+          echo -e "$BUILD_INFO" >> INFO.txt
+          echo "Change log:" >> INFO.txt
+          set +e
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+          if [ $? -eq 0 ]; then
+            git log "$LAST_TAG"..HEAD --pretty=format:"- %h-%an: %s" >> INFO.txt
+          else
+            git log --pretty=format:"- %h-%an: %s" >> INFO.txt
+          fi
+          cat INFO.txt
+        working-directory: ${{ inputs.DEVICE_PATH }}
+       
+
       # ======= ШАГ СБОРКИ =======
       - name: Build TWRP (limited parallelism)
         run: |
