@@ -52,22 +52,31 @@ jobs:
     timeout-minutes: 300
     permissions:
       contents: write
-
     steps:
       - name: Show build info
         run: |
-          echo "BUILD_TIME=$(date +%H%M)" >> "$GITHUB_ENV"
+          if [ -n "${{ inputs.LUNCH_TARGET }}" ]; then
+            echo "LUNCH_TARGET=${{ inputs.LUNCH_TARGET }}" >> "$GITHUB_ENV"
+          else
+            echo "LUNCH_TARGET=${{ inputs.DEVICE_NAME }}" >> "$GITHUB_ENV"
+          fi
           {
             echo 'BUILD_INFO<<EOF'
-            echo "Device Tree URL: ${{ inputs.DEVICE_TREE_URL }}"
-            echo "Device Tree Branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
-            echo "Device Path: ${{ inputs.DEVICE_PATH }}"
-            echo "Device Name: ${{ inputs.DEVICE_NAME }}"
-            echo "Build Target: ${{ inputs.BUILD_TARGET }}.img"
-            echo "Build Date: $(date)"
-            echo "Run ID: ${{ github.run_id }}"
+            echo
+            echo "Manifest url: ${{ inputs.TWRP_MANIFEST_URL }}"
+            echo "Manifest branch: ${{ inputs.TWRP_MANIFEST_BRANCH }}"
+            echo "Device tree url: ${{ inputs.DEVICE_TREE_URL }}"
+            echo "Device tree branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
+            echo "Device path: ${{ inputs.DEVICE_PATH }}"
+            echo "Device name: ${{ inputs.DEVICE_NAME }}"
+            echo "Lunch target: ${{ inputs.LUNCH_TARGET }}"
+            echo "Build target: ${{ inputs.BUILD_TARGET }}.img"
+            echo "Build date: $(date)"
+            echo
             echo EOF
           } >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(date +%F)" >> "$GITHUB_ENV"
+          echo "REPO_NAME=$(basename ${{ inputs.TWRP_MANIFEST_URL }})" >> "$GITHUB_ENV"
 
       - name: Fix Ubuntu Azure Mirrors
         run: |
