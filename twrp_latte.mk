@@ -5,7 +5,7 @@
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 # Inherit from device-specific configuration
-$(call inherit-product, realme/latte/device.mk)
+$(call inherit-product, device/realme/latte/device.mk)
 
 # Product Details Configured for Realme C61 (latte)
 PRODUCT_DEVICE := latte
