@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 
-DEVICE_PATH := device/latte
+DEVICE_PATH := device/realme/latte
 
 # Architecture
 TARGET_ARCH := arm64
