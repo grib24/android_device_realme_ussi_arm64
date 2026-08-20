@@ -3,6 +3,14 @@ name: TWRP 16 Builder
 on:
   workflow_dispatch:
     inputs:
+      TWRP_MANIFEST_URL:
+        description: "TWRP manifest url"
+        required: true
+        default: "https://github.com/TWRP-Test/platform_manifest_twrp_aosp"
+      TWRP_MANIFEST_BRANCH:
+        description: "TWRP branch"
+        required: true
+        default: "twrp-16.0"
       DEVICE_TREE_URL:
         description: Device Tree URL
         required: true
@@ -19,6 +27,10 @@ on:
         description: Device Name from tree
         required: true
         default: latte
+      LUNCH_TARGET:
+        description: "lunch twrp_ (default same as device name)"
+        required: false
+        default: ""        
       BUILD_TARGET:
         type: choice
         description: Partition containing recovery ramdisk
